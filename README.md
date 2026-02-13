@@ -1,12 +1,12 @@
-# SocNav3 dataset code and tools
+# SocNavData2026 dataset code and tools
 
 Official repository of the paper [Towards Data-Driven Metrics for Social Robot Navigation Benchmarking](https://arxiv.org/abs/2509.01251)
 
 This project is a joined effort towards the development of a data-driven Social Robot Navigation metric to facilitate benchmarking and policy optimization. Motivated by the lack of a standardized method to benchmark Social robot Navigation (SocNav) policies, we propose an **A**ll-encompassing **L**earned **T**rajectory-wise (ALT) metric, which is learned directly from human evaluations of full robot trajectories, conditioned on goals and contexts.
 
-This repository contains the core code and utilities for working with the proposed dataset (SocNav3). Alongside a baseline implementation to replicate our results, it also includes tools to check and visualize data, supporting dataset extension and further research.
+This repository contains the core code and utilities for working with the proposed dataset (SocNavData2026). Alongside a baseline implementation to replicate our results, it also includes tools to check and visualize data, supporting dataset extension and further research.
 
-All data required to run the code is available at the following link: [SocNav3_all_data](https://www.dropbox.com/scl/fo/5mdx98kxux31tpz17t737/ABZuqYOXVMrcGJmUGeBQBo0?rlkey=70f89t67bg4zoa6g6lw5dcflg&st=2o6n9lbn&dl=0)
+All data required to run the code is available at the following link: [SocNavData2026_all_data](https://www.dropbox.com/scl/fo/5mdx98kxux31tpz17t737/ABZuqYOXVMrcGJmUGeBQBo0?rlkey=70f89t67bg4zoa6g6lw5dcflg&st=2o6n9lbn&dl=0)
 
 ## Dataset
 
@@ -53,7 +53,7 @@ The trajectories directory contains JSON ﬁles of recorded trajectories in sub-
 
 The ratings directory contains a separate JSON ﬁle for each rater. The rating list includes control questions that allow analyzing the consistency of the data.
 
-The raw trajectories' dataset can be found at [SocNav3_all_data/dataset/unlabeled](https://www.dropbox.com/scl/fo/ze7op896sqb5tog89xnpl/AEm4g0fbyV_71tpR1ESH7Ic?rlkey=ev768vt29mug8b6z2acg3fdjf&st=dce05pti&dl=0). The ratings are available at [SocNav3_all_data/ratings](https://www.dropbox.com/scl/fo/yybho991ousbt1grhnd1s/ABwXfRZpGrIQ_Tx8RK9XUBM?rlkey=nok46jegkd3xsobdwdwhhxygd&st=669o74cw&dl=0). This last folder contains all the ratings and a selected set of ratings resulting from a consistency analysis.
+The raw trajectories' dataset can be found at [SocNavData2026_all_data/dataset/unlabeled](https://www.dropbox.com/scl/fo/ze7op896sqb5tog89xnpl/AEm4g0fbyV_71tpR1ESH7Ic?rlkey=ev768vt29mug8b6z2acg3fdjf&st=dce05pti&dl=0). The ratings are available at [SocNavData2026_all_data/ratings](https://www.dropbox.com/scl/fo/yybho991ousbt1grhnd1s/ABwXfRZpGrIQ_Tx8RK9XUBM?rlkey=nok46jegkd3xsobdwdwhhxygd&st=669o74cw&dl=0). This last folder contains all the ratings and a selected set of ratings resulting from a consistency analysis.
 
 After downloading trajectories and ratings, a labeled dataset can be obtained by running the following commands:
 
@@ -64,7 +64,7 @@ python3 label_dataset.py --trajectories PATH_TO_THE_TRAJECTORIES_DIRECTORY --rat
 
 The process creates two directories with the labeled trajectories, one including the control trajectories and another one with the remaining trajectories.
 
-A labeled version of the dataset can be directly downloaded from [SocNav3_all_data/dataset/labeled](https://www.dropbox.com/scl/fo/go4ud504exi7yr7sq1mwy/AKSA84sasbsPIvOjP78zdoY?rlkey=o4k1onc9fxdmr0ysbb68a2b1k&st=4jts131i&dl=0).
+A labeled version of the dataset can be directly downloaded from [SocNavData2026_all_data/dataset/labeled](https://www.dropbox.com/scl/fo/v4432r635kciu8x7eq093/AGFbMkKcJw3MpL8ff92flcs?rlkey=w4hnhzpduzkx0d44aoh2flbkp&st=9kf775q6&dl=0).
 
 Once the labeled dataset is generated, it can be used for training a model producing an ALT-metric. For that, the whole dataset can be split into train/validation/test sets using the script dataset/split_dataset.py as follows:
 
@@ -74,7 +74,7 @@ python3 split_dataset.py --dataset PATH_TO_THE_LABELED_DATASET
 ```
 The default split is 0.9/0.05/0.05. It can be modified using the arguments _--trainpercentage_ and _--valpercentage_.
 
-The split used in our experiments is available at [SocNav3_all_data/dataset/split](https://www.dropbox.com/scl/fo/6r83hv5pvrxhqs43692eb/AKak5wV8neRBl_O5--Tzayc?rlkey=2oujnu64d2jkigz6647y0vz8k&st=xhcqwg5g&dl=0).
+The split used in our experiments is available at [SocNavData2026_all_data/dataset/split](https://www.dropbox.com/scl/fo/6r83hv5pvrxhqs43692eb/AKak5wV8neRBl_O5--Tzayc?rlkey=2oujnu64d2jkigz6647y0vz8k&st=xhcqwg5g&dl=0).
 
 ## Tools
 
@@ -121,13 +121,13 @@ also provided in _tools/video_generator_. This tool produces a video recording f
 
 ## Baseline
 
-The SocNav3 dataset has been used to train an RNN-based ALT metric model. The code to train and test the model is available in the _baseline_ subdirectory.
+The SocNavData2026 dataset has been used to train an RNN-based ALT metric model. The code to train and test the model is available in the _baseline_ subdirectory.
 
 ### Model training
 
 Before training a model, the labeled dataset has to be split into train/validation/test sets as explained in section [Dataset](#dataset). Each trajectory in these sets is converted into a sequence of 1-D vectors that is used as input of the RNN. These vectors include trajectory features, metric-based features and an ad-hoc context embedding.
 
-The context embeddings are generated using queries to a large language model (LLM), which converts each context description into numerical representations. These embeddings capture variables related to factors such as task urgency, risk, and importance. The quantization of these variables is pre-computed and stored in CSV files. We provide four different quantization files (available at [SocNav3_all_data/contexts](https://www.dropbox.com/scl/fo/5t8b6an13kge3a9sbw8eg/AM1GltxDRaYpsbi0jtn91E4?rlkey=s9ybki84pq56xnopler2m9ryw&st=x42myq1y&dl=0)), each corresponding to the outputs of a different LLM.
+The context embeddings are generated using queries to a large language model (LLM), which converts each context description into numerical representations. These embeddings capture variables related to factors such as task urgency, risk, and importance. The quantization of these variables is pre-computed and stored in CSV files. We provide four different quantization files (available at [SocNavData2026_all_data/contexts](https://www.dropbox.com/scl/fo/5t8b6an13kge3a9sbw8eg/AM1GltxDRaYpsbi0jtn91E4?rlkey=s9ybki84pq56xnopler2m9ryw&st=x42myq1y&dl=0)), each corresponding to the outputs of a different LLM.
 
 The model's hyperparameters are specified in a YAML file. Among other parameters related with the model architecture, the number of epochs, the batch size, etc., it includes the dataset split (TXT files containing the paths of the labeled trajectories for training, validation and testing) and the context quantization file (i.e., CSV file containing the context embeddings produced by a specific LLM). The file _baseline/train.yaml_ shows an example of such configuration. The training can be started with:
 
@@ -136,7 +136,7 @@ cd baseline
 python3 train.py --task YAML_TRAINING_CONFIGURATION_FILE
 ```
 
-A baseline model trained using this procedure can be found at [SocNav3/models/](https://www.dropbox.com/scl/fo/bzkwsh152rk5dt0ifbdgx/AFnYIkQ3H8IhIYh218l3Y9M?rlkey=p7heojtjvjgg7k0wcyw9lxdan&st=e7tzlkgh&dl=0).
+A baseline model trained using this procedure can be found at [SocNavData2026_all_data/models/](https://www.dropbox.com/scl/fo/h3lyxk9w2udsirlt8on07/AKFbx5CEj3v_xvCEOnj43Xc?rlkey=p59252o25250gx3xqlflcclp4&st=24yhuhq4&dl=0).
 
 During execution, the training process displays progress information, including the training and validation loss, the current epoch, and loss improvements. Additionally, it generates two types of plots:
 
@@ -144,7 +144,7 @@ During execution, the training process displays progress information, including 
 
 * A plot showing qualitative results across several sets of trajectories for different contexts.
 
-For the second plot, the sets of trajectories and contexts must be specified in a separate YAML configuration file. The path to this file is then referenced in the main training configuration file. We provide sample files for this qualitative evaluation at [SocNav3_all_data/qualitative_tests](https://www.dropbox.com/scl/fo/ukzf55l9z4yemvytg9q17/ADxDSIOzwB8FM_bNtCtcoys?rlkey=k0hyyauzxnavy9f1v29b6j5u1&st=r5g78zyo&dl=0). The qualitative test can also be run separately using a dedicated script, as explained in the next section.
+For the second plot, the sets of trajectories and contexts must be specified in a separate YAML configuration file. The path to this file is then referenced in the main training configuration file. We provide sample files for this qualitative evaluation at [SocNavData2026_all_data/qualitative_tests](https://www.dropbox.com/scl/fo/nyiz9bxxzypefqkdtob75/AJ53hAofJODob--WEi9JUAA?rlkey=at05w27lh3vmo7k2fwgsuap3f&st=7wboebcj&dl=0). The qualitative test can also be run separately using a dedicated script, as explained in the next section.
 
 
 ### Model evaluation
@@ -165,7 +165,7 @@ cd baseline
 python3 control_results.py --model MODEL_FILE --control_path DIRECTORY_WITH_THE_CONTROL_LABELED_TRAJECTORIES --context CONTEXT_QUANTIZATION_FILE
 ```
 
-* _plot_qual_with_contexts.py_ : Generates (and, optionally, saves) qualitative plots for specific sets of trajectories and contexts. Both the trajectories and contexts must be specified in a configuration file, which is passed as an argument to the script. Each trajectory set is assumed to correspond to the same scenario but with different robot trajectories. Sample qualitative test sets and configuration files can be downloaded from [SocNav3_all_data/qualitative_tests](https://www.dropbox.com/scl/fo/ukzf55l9z4yemvytg9q17/ADxDSIOzwB8FM_bNtCtcoys?rlkey=k0hyyauzxnavy9f1v29b6j5u1&st=r5g78zyo&dl=0). Run the script with:  
+* _plot_qual_with_contexts.py_ : Generates (and, optionally, saves) qualitative plots for specific sets of trajectories and contexts. Both the trajectories and contexts must be specified in a configuration file, which is passed as an argument to the script. Each trajectory set is assumed to correspond to the same scenario but with different robot trajectories. Sample qualitative test sets and configuration files can be downloaded from [SocNavData2026_all_data/qualitative_tests](https://www.dropbox.com/scl/fo/nyiz9bxxzypefqkdtob75/AJ53hAofJODob--WEi9JUAA?rlkey=at05w27lh3vmo7k2fwgsuap3f&st=7wboebcj&dl=0). Run the script with:  
 
 ```bash
 cd baseline
@@ -198,7 +198,7 @@ To contribute with new trajectories:
 
 If you struggle to validate your data, we can help you run the validation checks.
 
-Once validated, we will add your trajectories to the dataset and include your name/organization in the list of SocNav3 contributors.
+Once validated, we will add your trajectories to the dataset and include your name/organization in the list of SocNavData2026 contributors.
 
 ### **Contributing New Ratings**
 
