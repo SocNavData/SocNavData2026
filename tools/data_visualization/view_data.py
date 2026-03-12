@@ -77,7 +77,7 @@ def draw_person(p, canvas, color, GRID_CELL_SIZEX, GRID_CELL_SIZEY, GRID_X_ORIG,
     pts = np.array([rotate( 0, -d, a),
 
                     rotate(-(w-rr), -d, a),
-                    rotate(-w, -(d-0.05), a),
+                    rotate(-w, -(d-rr), a),
 
                     rotate(-w, +(d-rr), a),
                     rotate(-(w-rr), +d, a),
@@ -94,22 +94,15 @@ def draw_person(p, canvas, color, GRID_CELL_SIZEX, GRID_CELL_SIZEY, GRID_X_ORIG,
     for p in pts.tolist():
         w_p = world_to_grid(p, GRID_CELL_SIZEX, GRID_CELL_SIZEY, GRID_X_ORIG, GRID_Y_ORIG, GRID_ANGLE_ORIG, GRID_HEIGHT)
         g_points.append([int(w_p[0]), int(w_p[1])])
-    cv2.fillPoly(canvas, [np.array(g_points, np.int32)], color)         
+    cv2.fillPoly(canvas, [np.array(g_points, np.int32)], color)
 
     pts = np.array(rotate(0, 0.05, a)) + offset
     g_p = world_to_grid((pts[0],pts[1]), GRID_CELL_SIZEX, GRID_CELL_SIZEY, GRID_X_ORIG, GRID_Y_ORIG, GRID_ANGLE_ORIG, GRID_HEIGHT)
     cv2.circle(canvas, g_p, 7, (50,40,170), -1)
 
-    pts = np.array(rotate(0, 0.12, a)) + offset
+    pts = np.array(rotate(0, 0.15, a)) + offset
     g_p = world_to_grid((pts[0],pts[1]), GRID_CELL_SIZEX, GRID_CELL_SIZEY, GRID_X_ORIG, GRID_Y_ORIG, GRID_ANGLE_ORIG, GRID_HEIGHT)
-    cv2.circle(canvas, g_p, 3, (50,40,170), -1)
-
-
-    # cv2.putText(canvas, str(p["id"]),
-    # org=(pts[0], pts[1]),
-    # fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-    # fontScale=1.5,
-    # color=(0, 0, 255))
+    cv2.circle(canvas, g_p, 6, (80,60,210), -1)
 
 
 def draw_robot(r, local_grid, GRID_CELL_SIZEX, GRID_CELL_SIZEY, GRID_X_ORIG, GRID_Y_ORIG, GRID_ANGLE_ORIG, GRID_HEIGHT):
@@ -293,8 +286,6 @@ def draw_scenario(data, imageW, imageH, FR = None):
         draw_grid = False
 
 
-    array = np.array(data["grid"]["data"])
-    print(f'{array.sum()=}')
     assert type(GRID_HEIGHT) == int, "The height of the canvas should be an integer."
     assert type(GRID_WIDTH) == int, "The width of the canvas should be an integer."
 
@@ -374,22 +365,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     output_dir = args.dir
-    if not os.path.isdir(output_dir):
-        os.mkdir(output_dir)
     if args.novideo is False:
         print("Videos will be saved in", output_dir)
+        if not os.path.isdir(output_dir):
+            os.mkdir(output_dir)
 
 
     for file_name in args.files:
 
-        # print(file_name)
-
         data = json.load(open(file_name, 'r'))
         global_grid, GRID_CELL_SIZEX, GRID_CELL_SIZEY, GRID_X_ORIG, GRID_Y_ORIG, GRID_ANGLE_ORIG, GRID_HEIGHT = draw_scenario(data, args.videowidth, args.videoheight)
 
-
-        assert type(GRID_HEIGHT) == int, "The height of the canvas should be an integer."
-        assert type(GRID_WIDTH) == int, "The width of the canvas should be an integer."
 
         if args.leftcrop > 0:
             if args.leftcrop < global_grid.shape[1]-args.rightcrop:
