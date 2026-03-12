@@ -284,13 +284,20 @@ def draw_scenario(data, imageW, imageH, FR = None):
         GRID_ANGLE_ORIG = data["grid"]["angle_orig"]
         draw_grid = "data" in data["grid"].keys()
     else:
-        GRID_HEIGHT = FR["height"]
-        GRID_WIDTH = FR["width"]
+        GRID_HEIGHT = int(FR["height"])
+        GRID_WIDTH = int(FR["width"])
         GRID_CELL_SIZE = FR["cell_size"]
         GRID_X_ORIG = FR["x_orig"]
         GRID_Y_ORIG = FR["y_orig"] 
         GRID_ANGLE_ORIG = FR["angle_orig"]
         draw_grid = False
+
+
+    array = np.array(data["grid"]["data"])
+    print(f'{array.sum()=}')
+    assert type(GRID_HEIGHT) == int, "The height of the canvas should be an integer."
+    assert type(GRID_WIDTH) == int, "The width of the canvas should be an integer."
+
 
     # print('orig', GRID_X_ORIG, GRID_Y_ORIG, GRID_ANGLE_ORIG)
     if draw_grid:
@@ -379,6 +386,10 @@ if __name__ == "__main__":
 
         data = json.load(open(file_name, 'r'))
         global_grid, GRID_CELL_SIZEX, GRID_CELL_SIZEY, GRID_X_ORIG, GRID_Y_ORIG, GRID_ANGLE_ORIG, GRID_HEIGHT = draw_scenario(data, args.videowidth, args.videoheight)
+
+
+        assert type(GRID_HEIGHT) == int, "The height of the canvas should be an integer."
+        assert type(GRID_WIDTH) == int, "The width of the canvas should be an integer."
 
         if args.leftcrop > 0:
             if args.leftcrop < global_grid.shape[1]-args.rightcrop:
