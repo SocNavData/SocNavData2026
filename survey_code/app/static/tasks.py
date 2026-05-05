@@ -1,11 +1,72 @@
 import js
+import json
 import random
 
+try:
+    from pyodide.http import open_url
+except Exception:
+    open_url = None
+
 MAX_TASKS = 300
+
+def _parse_indices_text(text):
+    text = text.strip()
+    if not text:
+        return []
+
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, list):
+            indices = []
+            for item in parsed:
+                try:
+                    indices.append(int(item))
+                except (TypeError, ValueError):
+                    continue
+            return indices
+        text = str(parsed)
+    except Exception:
+        pass
+
+    clean = (
+        text.replace("[", " ")
+        .replace("]", " ")
+        .replace(",", " ")
+        .replace("\n", " ")
+        .replace("\r", " ")
+        .replace("\t", " ")
+    )
+    parts = [p for p in clean.split(" ") if p]
+    indices = []
+    for part in parts:
+        try:
+            indices.append(int(part))
+        except ValueError:
+            continue
+    return indices
 
 def get_tasks_and_probabilities():
     with open("all_contexts.txt", "r") as fd:
         lines = fd.readlines()
+    
+    # Read indices from the server if possible, fallback to local file
+    last_indices = []
+    if open_url is not None:
+        try:
+            response = open_url("/indices.txt").read()
+            if isinstance(response, bytes):
+                response = response.decode("utf-8", errors="replace")
+            last_indices = _parse_indices_text(response)
+        except Exception:
+            last_indices = []
+
+    if not last_indices:
+        try:
+            with open("indices.txt", "r") as fd:
+                last_indices = _parse_indices_text(fd.read())
+        except FileNotFoundError:
+            # indices.txt may not exist on first load, that's okay
+            js.console.log("Warning: indices.txt not found, will generate random sequence")
 
     tasks = []
     dict_counts = { "assign":0, "battery":0, "routine":0, "delivery":0, "collection":0, "explore":0, "clean":0, "lab":0, "fire":0 }
@@ -49,7 +110,7 @@ def get_tasks_and_probabilities():
 
     for i in range(len(probabilities)):
         js.console.log(f"{categories[i]} --> {probabilities[i]}")
-    return tasks, categories, probabilities
+    return tasks, categories, probabilities, last_indices
 
 
 def should_we_accept(line, categories, probabilities):
@@ -86,7 +147,7 @@ def should_we_accept(line, categories, probabilities):
         return False
 
 def generate_descriptions():
-    tasks, categories, probabilities = get_tasks_and_probabilities()
+    tasks, categories, probabilities, _ = get_tasks_and_probabilities()
 
     descriptions = []
     while len(descriptions) < MAX_TASKS+5:

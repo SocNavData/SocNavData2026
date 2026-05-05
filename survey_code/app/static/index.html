@@ -36,6 +36,37 @@
             height: auto;
             max-width: 650px;
         }
+        .video-rating-layout {
+            display: flex;
+            gap: 24px;
+            align-items: anchor-center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .video-panel {
+            flex: 1 1 480px;
+            max-width: 650px;
+            text-align: left;
+        }
+        .slider-panel {
+            flex: 0 1 380px;
+            min-width: 320px;
+            text-align: center;
+        }
+        <!-- #slider-container p:first-of-type { 
+           margin-top: 0px !important; 
+        } -->
+        @media (max-width: 900px) {
+            .video-rating-layout {
+                flex-direction: column;
+                align-items: center;
+            }
+            .video-panel,
+            .slider-panel {
+                width: 100%;
+                max-width: 650px;
+            }
+        }
         button {
             padding: 10px 10px;
             margin: 5px;
@@ -141,13 +172,31 @@
         </div>
         <div class="page" id="page-5">
             <h2 id="myHeader"></h2>
-            <video id="myVideo" class="responsive-video" controls>
-                <source id="myVideoSource1" src="video.mp4" type="video/mp4">
-                <!-- <source id="myVideoSource2" src="video.webm" type="video/webm"> -->
-                Your browser does not support the video tag.
-            </video>
-            <p>Provide the overall quality of the trajectory (efficiency and socialness) considering the following context:<br/><strong><span id="myDescription">This is the description</span></strong></p>
-            <canvas id="myCanvas" width="340px" height="120" style="background-color: #ffffffff; touch-action: none;"></canvas>
+            <div class="video-rating-layout">
+                <div class="video-panel">
+                    <p>Provide the overall quality of the trajectory (efficiency and socialness) considering the following context:<br/><strong><span id="myDescription">This is the description</span></strong></p>
+                    <!-- <img id="myVideo" class="responsive-video" src="" alt="Trajectory playback"> -->
+                    <video id="myVideo" class="responsive-video" controls>
+                        <source id="myVideoSource1" src="video.webm" type="video/webm">
+                        <!-- <source id="myVideoSource2" src="video.mp4" type="video/mp4"> -->
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                <div class="slider-panel">
+                    <div id="slider-container"></div>
+                </div>
+            </div>
+            <!--<canvas id="myCanvas" width="340px" height="120" style="background-color: #ffffffff; touch-action: none;"></canvas> -->
+            <!--<p style="margin-bottom: 0;"><strong>Efficiency:</strong></p>
+            //<canvas id="myCanvasSafety" width="340px" height="120" style="background-color: #ffffffff; touch-action: none;"></canvas>
+
+            //<p style="margin-bottom: 0;"><strong>Socialness:</strong></p>
+            //<canvas id="myCanvasFriendliness" width="340px" height="120" style="background-color: #ffffffff; touch-action: none;"></canvas>
+            //<p style="margin-bottom: 0;"><strong>Naturalness:</strong></p>
+            //<canvas id="myCanvasNaturalness" width="340px" height="120" style="background-color: #ffffffff; touch-action: none;"></canvas>
+            //<p style="margin-bottom: 0;"><strong>Comfort:</strong></p>
+            //<canvas id="myCanvasComfort" width="340px" height="120" style="background-color: #ffffffff; touch-action: none;"></canvas>-->
+            <br/>
         </div>
         <div class="buttons">
             <button id="prev-btn">prev</button>
@@ -272,6 +321,7 @@
             }
             else if (currentPage === 5 )
             {
+                //video_watched = 1;
                 if (answer_set === 1)
                 {
                     questionIndex += 1;
