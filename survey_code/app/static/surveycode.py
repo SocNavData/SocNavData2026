@@ -10,11 +10,11 @@ import tasks
 
 
 MAX_ANSWERS = 300
-MAX_VIDEOS = 4-1
+MAX_VIDEOS = 215
 
 
 videoSource1 = js.document.getElementById('myVideoSource1')
-#videoSource2 = js.document.getElementById('myVideoSource2')
+videoSource2 = js.document.getElementById('myVideoSource2')
 indices_txt = js.document.getElementById('indices_txt')
 video = js.document.getElementById('myVideo')
 description = js.document.getElementById('myDescription')
@@ -43,8 +43,9 @@ structure = {
 # 1. Configuration: (Canvas ID, Dictionary Key, Display Name on Screen)
 SLIDER_CONFIG = [
     ('myCanvasSafety', 'safety', 'Safety'),
-    ('myCanvasFriendliness', 'friendliness', 'Friendliness'),
+    ('myCanvasPredictability', 'predictability', 'Predictability'),
     ('myCanvasNaturalness', 'naturalness', 'Naturalness'),
+    ('myCanvasSocialAppropriateness', 'social_appropriateness', 'Social Appropriateness'),
     ('myCanvasOverall', 'overall', 'Overall score')
 ]
 
@@ -99,8 +100,10 @@ def reload_video_function(structure):
     video_id = str(structure["indices"][question_index])
 
 
-    gif_path = f"/static/videos/experiment_{video_id}.webm"
+    gif_path = f"/static/videos/video_SACSON/{video_id.zfill(9)}.webm"
+    gif_path_mp4 = f"/static/videos/video_SACSON/{video_id.zfill(9)}.mp4"
     videoSource1.src = gif_path
+    videoSource2.src = gif_path_mp4
     video.load()  # Reload the video element to apply the new source
     # Adding a timestamp ensures the GIF starts from frame 1
     #video_element.src = f"{gif_path}?t={js.Date.now()}"
@@ -238,58 +241,58 @@ else:
         #"/workspaces/hunavsim_devcontainer/storage/indices.txt",
         #"static/indices.txt",
     _,_,_,lista = tasks.get_tasks_and_probabilities()
-    if lista is None:
-        print("Could not find indices file in any known location. Generating random indices.")
-        structure["answers"] = {}
-        structure["indices"] = [random.randint(1, MAX_VIDEOS) for _ in range(MAX_ANSWERS)]
-        #structure["indices"] = None
-        structure["descriptions"] = tasks.generate_descriptions()
-        tasks.fix_fixed_tasks(structure)
-    else:
-        #print(lista)
-        try:
-            payload = json.dumps({"label": "lista", "value": lista})
-            js.eval(
-                "fetch('/log', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: "
-                + json.dumps(payload)
-                + "})"
-            )
-        except Exception as e:
-            js.console.log(f"Failed to log lista to server: {e}")
-        # If we loaded indices, keep existing answers empty and set indices from file
-        structure["answers"] = {}
-        # attempt to parse as JSON array or comma-separated string
-        structure["indices"] = [random.randint(1, MAX_VIDEOS) for _ in range(MAX_ANSWERS)]
-        ## exclude the indices that appear in the file from the random generation
-        reduced_lista = [x for x in lista[:MAX_ANSWERS] if x > 1]
-        try:
-            payload = json.dumps({"label": "reduced_lista", "value": reduced_lista})
-            js.eval(
-                "fetch('/log', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: "
-                + json.dumps(payload)
-                + "})"
-            )
-        except Exception as e:
-            js.console.log(f"Failed to log reduced_lista to server: {e}")
-        exclude = set(reduced_lista)
-        structure["indices"] = [idx for idx in structure["indices"] if idx not in exclude]
-        try:
-           payload = json.dumps({"label": "indices", "value": structure["indices"]})
-           js.eval(
-               "fetch('/log', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: "
-               + json.dumps(payload)
-               + "})"
-           )
-        except Exception as e:
-            js.console.log(f"Failed to log indices to server: {e}")
-        #for idx in reduced_lista:
-        #    if idx in structure["indices"]:
-        #        structure["indices"].remove(idx)
-                #structure["indices"]
-        #structure["indices"].extend(lista)
-        #structure["indices"] = lista
-        structure["descriptions"] = tasks.generate_descriptions()
-        #tasks.fix_fixed_tasks(structure)
+    #if lista is None:
+    print("Could not find indices file in any known location. Generating random indices.")
+    structure["answers"] = {}
+    structure["indices"] = [random.randint(1, MAX_VIDEOS) for _ in range(MAX_ANSWERS)]
+    #structure["indices"] = None
+    structure["descriptions"] = tasks.generate_descriptions()
+    tasks.fix_fixed_tasks(structure)
+    #else:
+    #    #print(lista)
+    #    try:
+    #        payload = json.dumps({"label": "lista", "value": lista})
+    #        js.eval(
+    #            "fetch('/log', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: "
+    #            + json.dumps(payload)
+    #            + "})"
+    #        )
+    #    except Exception as e:
+    #        js.console.log(f"Failed to log lista to server: {e}")
+    #    # If we loaded indices, keep existing answers empty and set indices from file
+    #    structure["answers"] = {}
+    #    # attempt to parse as JSON array or comma-separated string
+    #    structure["indices"] = [random.randint(1, MAX_VIDEOS) for _ in range(MAX_ANSWERS)]
+    #    ## exclude the indices that appear in the file from the random generation
+    #    reduced_lista = [x for x in lista[:MAX_ANSWERS] if x > 1]
+    #    try:
+    #        payload = json.dumps({"label": "reduced_lista", "value": reduced_lista})
+    #        js.eval(
+    #            "fetch('/log', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: "
+    #            + json.dumps(payload)
+    #            + "})"
+    #        )
+    #    except Exception as e:
+    #        js.console.log(f"Failed to log reduced_lista to server: {e}")
+    #    exclude = set(reduced_lista)
+    #    structure["indices"] = [idx for idx in structure["indices"] if idx not in exclude]
+    #    try:
+    #       payload = json.dumps({"label": "indices", "value": structure["indices"]})
+    #       js.eval(
+    #           "fetch('/log', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: "
+    #           + json.dumps(payload)
+    #           + "})"
+    #       )
+    #    except Exception as e:
+    #        js.console.log(f"Failed to log indices to server: {e}")
+    #    #for idx in reduced_lista:
+    #    #    if idx in structure["indices"]:
+    #    #        structure["indices"].remove(idx)
+    #            #structure["indices"]
+    #    #structure["indices"].extend(lista)
+    #    #structure["indices"] = lista
+    #    structure["descriptions"] = tasks.generate_descriptions()
+    #    tasks.fix_fixed_tasks(structure)
 
 
 
@@ -398,7 +401,7 @@ video.addEventListener("ended", watched_handler_proxy)
 def prev_button_handler(event):
     reload_video = int(js.eval("reload_video"))
     current_page = int(js.eval("currentPage"))
-    if current_page == 5 and reload_video == 1:
+    if current_page == 6 and reload_video == 1:
         js.eval("reload_video = 0;")
         reload_video_function(structure)
     js.eval("answer_set = 1;")
