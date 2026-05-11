@@ -1,11 +1,72 @@
 import js
+import json
 import random
 
+try:
+    from pyodide.http import open_url
+except Exception:
+    open_url = None
+
 MAX_TASKS = 300
+
+def _parse_indices_text(text):
+    text = text.strip()
+    if not text:
+        return []
+
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, list):
+            indices = []
+            for item in parsed:
+                try:
+                    indices.append(int(item))
+                except (TypeError, ValueError):
+                    continue
+            return indices
+        text = str(parsed)
+    except Exception:
+        pass
+
+    clean = (
+        text.replace("[", " ")
+        .replace("]", " ")
+        .replace(",", " ")
+        .replace("\n", " ")
+        .replace("\r", " ")
+        .replace("\t", " ")
+    )
+    parts = [p for p in clean.split(" ") if p]
+    indices = []
+    for part in parts:
+        try:
+            indices.append(int(part))
+        except ValueError:
+            continue
+    return indices
 
 def get_tasks_and_probabilities():
     with open("all_contexts.txt", "r") as fd:
         lines = fd.readlines()
+    
+    # Read indices from the server if possible, fallback to local file
+    last_indices = []
+    if open_url is not None:
+        try:
+            response = open_url("/indices.txt").read()
+            if isinstance(response, bytes):
+                response = response.decode("utf-8", errors="replace")
+            last_indices = _parse_indices_text(response)
+        except Exception:
+            last_indices = []
+
+    if not last_indices:
+        try:
+            with open("indices.txt", "r") as fd:
+                last_indices = _parse_indices_text(fd.read())
+        except FileNotFoundError:
+            # indices.txt may not exist on first load, that's okay
+            js.console.log("Warning: indices.txt not found, will generate random sequence")
 
     tasks = []
     dict_counts = { "assign":0, "battery":0, "routine":0, "delivery":0, "collection":0, "explore":0, "clean":0, "lab":0, "fire":0 }
@@ -49,7 +110,7 @@ def get_tasks_and_probabilities():
 
     for i in range(len(probabilities)):
         js.console.log(f"{categories[i]} --> {probabilities[i]}")
-    return tasks, categories, probabilities
+    return tasks, categories, probabilities, last_indices
 
 
 def should_we_accept(line, categories, probabilities):
@@ -86,7 +147,7 @@ def should_we_accept(line, categories, probabilities):
         return False
 
 def generate_descriptions():
-    tasks, categories, probabilities = get_tasks_and_probabilities()
+    tasks, categories, probabilities, _ = get_tasks_and_probabilities()
 
     descriptions = []
     while len(descriptions) < MAX_TASKS+5:
@@ -102,63 +163,67 @@ def generate_descriptions():
 
 def fix_fixed_tasks(structure):
     #  1 [ R E P E A T E D --  7]
-    structure["indices"][7] = 3007
-    structure["descriptions"][7] = "A robot is trying to locate the source of a noise in a library."
-    #  2 [ R E P E A T E D --  9]
-    structure["indices"][11] = 2007
-    structure["descriptions"][11] = "A robot is navigating as part of a delivery task in a museum."
-    #  3 [ R E P E A T E D -- 10]
-    structure["indices"][13] = 1007
-    structure["descriptions"][13] = "An office assistant robot keeps track of who is in the office today."
-    #  4 [ R E P E A T E D -- 11]
-    structure["indices"][17] = 7
-    structure["descriptions"][17] = "A hotel robot is inspecting the floor to ensure it's safe to walk."
-    #  5 [ R E P E A T E D -- 12]
-    structure["indices"][19] = 302
-    structure["descriptions"][19] = "A drug delivery robot is working in a hospital."
-    #  6
-    structure["indices"][23] = 1302
-    structure["descriptions"][23] = "A museum robot roams around looking for people interested in its services."
-    #  7
-    structure["indices"][29] = structure["indices"][7]
-    structure["descriptions"][29] = structure["descriptions"][7]
-    #  8
-    structure["indices"][31] = 2302
-    structure["descriptions"][31] = "A robot is performing routine tasks in an office."
-    #  9
-    structure["indices"][37] = structure["indices"][11]
-    structure["descriptions"][37] = structure["descriptions"][11]
-    # 10
-    structure["indices"][41] = structure["indices"][13]
-    structure["descriptions"][41] = structure["descriptions"][13]
-    # 11
-    structure["indices"][43] = structure["indices"][17]
-    structure["descriptions"][43] = structure["descriptions"][17]
-    # 12
-    structure["indices"][47] = structure["indices"][19]
-    structure["descriptions"][47] = structure["descriptions"][19]
-    # 13
-    structure["indices"][53] = 3102
-    structure["descriptions"][53] = "A museum guide robot has been asked to go to the goal shown, with no additional context."
-    # 14
-    structure["indices"][59] = 2002
-    structure["descriptions"][59] = "A lab assistant robot is looking for potential hazards in its environment."
-    # 15
-    structure["indices"][61] = 1002
-    structure["descriptions"][61] = "A cleaning robot working in a hospital is looking for dirty spots to clean."
-    # 16
-    structure["indices"][67] = 2
-    structure["descriptions"][67] = "The robot is trying to locate the glasses of a patient in a hospital."
-    # 17
-    structure["indices"][71] = 3094
-    structure["descriptions"][71] = "A hospital assistant robot has been asked to go to the goal, with no additional context."
-    # 18
-    structure["indices"][73] = 2894
-    structure["descriptions"][73] = "An idle robot working in a museum goes to recharge its battery. It has 13% battery left."
-    # 19
-    structure["indices"][79] = 1879
-    structure["descriptions"][79] = "A assistant robot is performing routine tasks in a restaurant."
-    # 20
-    structure["indices"][83] = 834
-    structure["descriptions"][83] = "A warehouse robot is moving around while inspecting the air quality."
+    structure["indices"][1] = 216   
+    structure["descriptions"][1] = "A robot is being nice"
+    #structure["indices"][7] = 3007
+    structure["indices"][2] = 217
+    structure["descriptions"][2] = "A robot is exploding around looking for people interested in its services."
+    #structure["descriptions"][7] = "A robot is trying to locate the source of a noise in a library."
+    ##  2 [ R E P E A T E D --  9]
+    #structure["indices"][11] = 2007
+    #structure["descriptions"][11] = "A robot is navigating as part of a delivery task in a museum."
+    ##  3 [ R E P E A T E D -- 10]
+    #structure["indices"][13] = 1007
+    #structure["descriptions"][13] = "An office assistant robot keeps track of who is in the office today."
+    ##  4 [ R E P E A T E D -- 11]
+    #structure["indices"][17] = 7
+    #structure["descriptions"][17] = "A hotel robot is inspecting the floor to ensure it's safe to walk."
+    ##  5 [ R E P E A T E D -- 12]
+    #structure["indices"][19] = 302
+    #structure["descriptions"][19] = "A drug delivery robot is working in a hospital."
+    ##  6
+    #structure["indices"][23] = 1302
+    #structure["descriptions"][23] = "A museum robot roams around looking for people interested in its services."
+    ##  7
+    #structure["indices"][29] = structure["indices"][7]
+    #structure["descriptions"][29] = structure["descriptions"][7]
+    ##  8
+    #structure["indices"][31] = 2302
+    #structure["descriptions"][31] = "A robot is performing routine tasks in an office."
+    ##  9
+    #structure["indices"][37] = structure["indices"][11]
+    #structure["descriptions"][37] = structure["descriptions"][11]
+    ## 10
+    #structure["indices"][41] = structure["indices"][13]
+    #structure["descriptions"][41] = structure["descriptions"][13]
+    ## 11
+    #structure["indices"][43] = structure["indices"][17]
+    #structure["descriptions"][43] = structure["descriptions"][17]
+    ## 12
+    #structure["indices"][47] = structure["indices"][19]
+    #structure["descriptions"][47] = structure["descriptions"][19]
+    ## 13
+    #structure["indices"][53] = 3102
+    #structure["descriptions"][53] = "A museum guide robot has been asked to go to the goal shown, with no additional context."
+    ## 14
+    #structure["indices"][59] = 2002
+    #structure["descriptions"][59] = "A lab assistant robot is looking for potential hazards in its environment."
+    ## 15
+    #structure["indices"][61] = 1002
+    #structure["descriptions"][61] = "A cleaning robot working in a hospital is looking for dirty spots to clean."
+    ## 16
+    #structure["indices"][67] = 2
+    #structure["descriptions"][67] = "The robot is trying to locate the glasses of a patient in a hospital."
+    ## 17
+    #structure["indices"][71] = 3094
+    #structure["descriptions"][71] = "A hospital assistant robot has been asked to go to the goal, with no additional context."
+    ## 18
+    #structure["indices"][73] = 2894
+    #structure["descriptions"][73] = "An idle robot working in a museum goes to recharge its battery. It has 13% battery left."
+    ## 19
+    #structure["indices"][79] = 1879
+    #structure["descriptions"][79] = "A assistant robot is performing routine tasks in a restaurant."
+    ## 20
+    #structure["indices"][83] = 834
+    #structure["descriptions"][83] = "A warehouse robot is moving around while inspecting the air quality."
 
