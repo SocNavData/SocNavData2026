@@ -53,7 +53,7 @@
 
         .video-panel {
             flex: 1 1 480px;
-            max-width: 650px;
+            max-width: 600px;
             text-align: left;
         }
 
@@ -63,11 +63,7 @@
             text-align: center;
         }
 
-        < !-- #slider-container p:first-of-type {
-            margin-top: 0px !important;
-        }
-
-        -->@media (max-width: 900px) {
+        @media (max-width: 800px) {
             .video-rating-layout {
                 flex-direction: column;
                 align-items: center;
@@ -202,14 +198,14 @@
                     dangerous proximity?</li>
                 <li><strong>Predictability:</strong> How easy is it to predict what the robot will do?</li>
                 <li><strong>Naturalness:</strong> How human-like, smooth, and fluent does the motion appear?</li>
-                <li><strong>Social Appropriateness:</strong> Is the robot following the expected social conventions in
-                    this case? Would you choose the same trajectory of the robot?</li>
+                <li><strong>Socialness:</strong> Is the robot following the expected social conventions in
+                    this case?</li>
                 <li><strong>Overall score:</strong> Overall, how acceptable is this robot behavior in a shared human
                     environment?</li>
             </ul>
             <p>You can use the full range of each slider. There are no right or wrong answers.</p>
         </div>
-        <div class="page" id="page-6" style="height: 100vh overflow: hidden;">
+        <div class="page" id="page-6" style="height: fit-content;">
             <h2 id="myHeader"></h2>
             <div id="video-title" style="width: 100%; text-align: center; max-width: 650px; margin: 0 auto;">
                     <p>Provide the metrics evaluation for the following trajectory:<br /><strong><span
@@ -218,18 +214,22 @@
             <div class="video-rating-layout">
                 <div class="video-panel">
                     <!-- <img id="myVideo" class="responsive-video" src="" alt="Trajectory playback"> -->
-                    <video id="myVideo" class="responsive-video" controls>
-                        <source id="myVideoSource1" src="video.webm" type="video/webm">
-                        <source id="myVideoSource2" src="video.mp4" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
+                    <div id = "video">
+                        <video id="myVideo" class="responsive-video" controls>
+                            <source id="myVideoSource1" src="video.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                    <div class="counter">
+                        <h2 id="myCounter" style="text-align: center;"></h2>
+                    </div>
                 </div>
                 <div class="slider-panel">
                     <div id="slider-container"></div>
                     <div id="buttons-video-anchor"></div>
-                    <div class="counter">
+                    <!--<div class="counter">
                         <h2 id="myCounter"></h2>
-                    </div>
+                    </div> -->
                     <!--<div class="buttons">
                         <button id="prev-btn">prev</button>
                         <button id="next-btn">next</button><br />
@@ -269,6 +269,8 @@
         let answer_set = 0;
         let reload_video = 1;
         let video_watched = 0;
+        const MAX_ANSWERS =28; 
+        //<!-- 26 and the control video repeated twice -->
 
         const pages = document.querySelectorAll('.page');
         const prevBtn = document.getElementById('prev-btn');
@@ -384,17 +386,22 @@
             else if (currentPage === 6) {
                 //video_watched = 1;
                 if (answer_set === 1) {
+                    if (questionIndex >= MAX_ANSWERS - 1) {
+                        sendBtn.click();
+                        return;
+                    }
+
                     questionIndex += 1;
                     answer_set = 0;
                     reload_video = 1;
                     video_watched = 0;
 
-                    if (questionIndex >= 300) {
-                        sendBtn.click();
-                    }
-                    else {
-                        showPage(currentPage);
-                    }
+                    //if (questionIndex >= 30) {
+                    //    sendBtn.click();
+                    //}
+                    //else {
+                    showPage(currentPage);
+                    //}
                 }
                 else {
                     alert('Please, provide an answer before proceeding to the next trajectory.');

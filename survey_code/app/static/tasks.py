@@ -7,7 +7,23 @@ try:
 except Exception:
     open_url = None
 
-MAX_TASKS = 300
+MAX_TASKS = 26
+
+FIXED_TASKS = [
+    #(0, 13, "A robot is being nice"),
+    (4, 126, "First control question: A robot is trying to locate the source of a noise in a library."),
+    (9, 318, "Second control question: A robot is navigating as part of a delivery task in a museum."),
+    (11, 1083, "Third control question: A robot is trying to locate the glasses of a patient in a hospital."),
+    #(13, 1095, "A robot is exploding around looking for people interested in its services."),
+    #(14, 999, "A robot is exploding around looking for people interested in its services."),
+    (18, 1012, "Fourth control question: A hotel robot is inspecting the floor to ensure it's safe to walk."),
+    #(24, 1040, "A robot is exploding around looking for people interested in its services."),
+    (20, 1054, "Fifth control question: A drug delivery robot is working in a hospital."),
+]
+
+
+def get_fixed_task_video_ids():
+    return {video_id for _, video_id, _ in FIXED_TASKS}
 
 def _parse_indices_text(text):
     text = text.strip()
@@ -162,12 +178,13 @@ def generate_descriptions():
 
 
 def fix_fixed_tasks(structure):
-    #  1 [ R E P E A T E D --  7]
-    structure["indices"][1] = 216   
-    structure["descriptions"][1] = "A robot is being nice"
-    #structure["indices"][7] = 3007
-    structure["indices"][2] = 217
-    structure["descriptions"][2] = "A robot is exploding around looking for people interested in its services."
+    indices = structure.get("indices")
+    descriptions = structure.get("descriptions")
+    for position, video_id, desc in FIXED_TASKS:
+        if indices is not None and position < len(indices):
+            indices[position] = video_id
+        if descriptions is not None and position < len(descriptions):
+            descriptions[position] = desc
     #structure["descriptions"][7] = "A robot is trying to locate the source of a noise in a library."
     ##  2 [ R E P E A T E D --  9]
     #structure["indices"][11] = 2007

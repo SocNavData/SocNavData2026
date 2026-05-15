@@ -9,12 +9,12 @@ from slider import Slider
 import tasks
 
 
-MAX_ANSWERS = 300
-MAX_VIDEOS = 215
+MAX_ANSWERS = 26
+MAX_VIDEOS = 1134
 
 
 videoSource1 = js.document.getElementById('myVideoSource1')
-videoSource2 = js.document.getElementById('myVideoSource2')
+#videoSource2 = js.document.getElementById('myVideoSource2')
 indices_txt = js.document.getElementById('indices_txt')
 video = js.document.getElementById('myVideo')
 description = js.document.getElementById('myDescription')
@@ -45,7 +45,7 @@ SLIDER_CONFIG = [
     ('myCanvasSafety', 'safety', 'Safety'),
     ('myCanvasPredictability', 'predictability', 'Predictability'),
     ('myCanvasNaturalness', 'naturalness', 'Naturalness'),
-    ('myCanvasSocialAppropriateness', 'social_appropriateness', 'Social Appropriateness'),
+    ('myCanvasSocialness', 'socialness', 'Socialness'),
     ('myCanvasOverall', 'overall', 'Overall score')
 ]
 
@@ -75,7 +75,7 @@ for canvas_id, metric, display_name in SLIDER_CONFIG:
     canvas = js.document.createElement("canvas")
     canvas.id = canvas_id
     canvas.width = 340
-    canvas.height = 80
+    canvas.height = 60
     canvas.style.backgroundColor = "transparent" # Let the page background show through
     canvas.style.touchAction = "none"
     canvas.style.display = "block"
@@ -88,6 +88,14 @@ for canvas_id, metric, display_name in SLIDER_CONFIG:
 def reload_video_function(structure):
     js.console.log("Reload!")
     question_index = int(js.eval("questionIndex"))
+
+    if not structure.get("indices") or not structure.get("descriptions"):
+        js.console.log("Missing indices or descriptions")
+        return
+
+    if question_index < 0 or question_index >= len(structure["indices"]) or question_index >= len(structure["descriptions"]):
+        js.console.log(f"question_index out of range: {question_index}")
+        return
     
     text = structure["descriptions"][question_index]
     description.innerText = text
@@ -100,20 +108,20 @@ def reload_video_function(structure):
     video_id = str(structure["indices"][question_index])
 
 
-    gif_path = f"/static/videos/video_SACSON/{video_id.zfill(9)}.webm"
-    gif_path_mp4 = f"/static/videos/video_SACSON/{video_id.zfill(9)}.mp4"
-    videoSource1.src = gif_path
-    videoSource2.src = gif_path_mp4
+    #gif_path = f"/static/videos/video_SACSON/{video_id.zfill(9)}.webm"
+    gif_path_mp4 = f"/static/videos/complete_indexed_videos/{video_id.zfill(9)}.mp4"
+    videoSource1.src = gif_path_mp4
+    #videoSource2.src = gif_path_mp4
     video.load()  # Reload the video element to apply the new source
     # Adding a timestamp ensures the GIF starts from frame 1
     #video_element.src = f"{gif_path}?t={js.Date.now()}"
     
     # Update counter logic...
     count = js.document.getElementById('myCounter')
-    if question_index <= 50:
-        count.innerHTML = f"<span style=\"color: #440000\">{question_index+1}/50 (up to {MAX_ANSWERS})<span>"
+    if question_index <= 25:
+        count.innerHTML = f"<span style=\"color: #440000\">{question_index+1}/26 (up to {MAX_ANSWERS})<span>"
     else:
-        count.innerHTML = f"<span style=\"color: #007700\">{question_index+1}/50 (up to {MAX_ANSWERS})<span>"
+        count.innerHTML = f"<span style=\"color: #007700\">{question_index+1}/2 (up to {MAX_ANSWERS})<span>"
 
 def getTouchPos(canvas, touchEvent):
     rect = canvas.getBoundingClientRect()
@@ -244,10 +252,31 @@ else:
     #if lista is None:
     print("Could not find indices file in any known location. Generating random indices.")
     structure["answers"] = {}
-    structure["indices"] = [random.randint(1, MAX_VIDEOS) for _ in range(MAX_ANSWERS)]
+    structure["indices"] = [None] * MAX_ANSWERS
+
     #structure["indices"] = None
     structure["descriptions"] = tasks.generate_descriptions()
     tasks.fix_fixed_tasks(structure)
+
+    exclude_ids = tasks.get_fixed_task_video_ids()
+    available_indices = [
+        i for i in range(1, MAX_VIDEOS + 1)
+        if i not in exclude_ids
+    ]
+    random_needed = sum(1 for idx in structure["indices"] if idx is None)
+    random_indices = random.sample(available_indices, random_needed)
+
+    random_iter = iter(random_indices)
+    for i, idx in enumerate(structure["indices"]):
+        if idx is None:
+            structure["indices"][i] = next(random_iter)
+
+    control_index = random.choice(random_indices) if random_indices else random.choice(structure["indices"])
+
+    structure["indices"].insert(0, control_index)
+    structure["indices"].append(control_index)
+    structure["descriptions"].insert(0, "This is a control video to check if you are paying attention. Please rate it as you would normally do, there is no right or wrong answer for this one.")
+    structure["descriptions"].append("This is a control video to check if you are paying attention. Please rate it as you would normally do, there is no right or wrong answer for this one.")
     #else:
     #    #print(lista)
     #    try:
