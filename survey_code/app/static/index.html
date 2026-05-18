@@ -88,6 +88,39 @@
             height: 120px;
             touch-action: none;
         }
+
+        .metric-help-button {
+            border: 1px solid #cbd5e1;
+            background-color: #f1f5f9;
+            color: #475569;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+        }
+
+        .metric-help-button:focus-visible {
+            outline: 2px solid #94a3b8;
+            outline-offset: 2px;
+        }
+
+        .metric-help-text {
+            margin: 6px auto 0;
+            max-width: 340px;
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.4;
+            text-align: center;
+        }
     </style>
 </head>
 
@@ -284,9 +317,21 @@
         const video = document.getElementById('myVideo');
         const canvas = document.getElementById('myCanvas');
 
+        function closeMetricHelp() {
+            document.querySelectorAll('.metric-help-text').forEach(panel => {
+                panel.style.display = 'none';
+                panel.setAttribute('data-open', '0');
+            });
+            document.querySelectorAll('.metric-help-button').forEach(button => {
+                button.setAttribute('aria-expanded', 'false');
+            });
+        }
+
         function showPage(page) {
             pages.forEach(p => p.classList.remove('active'));
             document.getElementById(`page-${page}`).classList.add('active');
+
+            closeMetricHelp();
 
             const targetAnchor = page === 6 ? buttonsVideoAnchor : buttonsDefaultAnchor;
             if (targetAnchor && buttonsContainer && buttonsContainer.parentElement !== targetAnchor) {

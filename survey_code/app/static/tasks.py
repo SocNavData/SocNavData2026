@@ -7,7 +7,7 @@ try:
 except Exception:
     open_url = None
 
-MAX_TASKS = 26
+MAX_TASKS = 28-2
 
 FIXED_TASKS = [
     #(0, 13, "A robot is being nice"),
@@ -166,7 +166,7 @@ def generate_descriptions():
     tasks, categories, probabilities, _ = get_tasks_and_probabilities()
 
     descriptions = []
-    while len(descriptions) < MAX_TASKS+5:
+    while len(descriptions) < MAX_TASKS:
         accepted = False
         while accepted is False:
             task = random.randint(0, len(tasks)-1)

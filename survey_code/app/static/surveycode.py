@@ -9,7 +9,7 @@ from slider import Slider
 import tasks
 
 
-MAX_ANSWERS = 26
+MAX_ANSWERS = 28-2
 MAX_VIDEOS = 1134
 
 
@@ -49,6 +49,44 @@ SLIDER_CONFIG = [
     ('myCanvasOverall', 'overall', 'Overall score')
 ]
 
+METRIC_DESCRIPTIONS = {
+    'safety': 'Does the robot appear unlikely to cause collision, near-collision, or dangerous proximity?',
+    'predictability': 'How easy is it to predict what the robot will do?',
+    'naturalness': 'How human-like, smooth, and fluent does the motion appear?',
+    'socialness': 'Is the robot following the expected social conventions in this case?',
+    'overall': 'Overall, how acceptable is this robot behavior in a shared human environment?'
+}
+
+def toggle_help(event):
+    target = event.currentTarget
+    if target is None:
+        return
+    target_id = target.getAttribute("data-target")
+    if not target_id:
+        return
+    panel = js.document.getElementById(target_id)
+    if panel is None:
+        return
+    is_open = panel.getAttribute("data-open") == "1"
+    if not is_open:
+        for other in js.document.querySelectorAll(".metric-help-text"):
+            if other.id != target_id and other.getAttribute("data-open") == "1":
+                other.style.display = "none"
+                other.setAttribute("data-open", "0")
+        for btn in js.document.querySelectorAll(".metric-help-button"):
+            if btn.getAttribute("data-target") != target_id:
+                btn.setAttribute("aria-expanded", "false")
+    if is_open:
+        panel.style.display = "none"
+        panel.setAttribute("data-open", "0")
+        target.setAttribute("aria-expanded", "false")
+    else:
+        panel.style.display = "block"
+        panel.setAttribute("data-open", "1")
+        target.setAttribute("aria-expanded", "true")
+
+help_toggle_proxy = pyodide.ffi.create_proxy(toggle_help)
+
 expected_metrics = [metric for _, metric, _ in SLIDER_CONFIG]
 sliders = []
 
@@ -68,14 +106,53 @@ for canvas_id, metric, display_name in SLIDER_CONFIG:
     label.style.fontFamily = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
     label.style.color = "#334155" # Dark slate
     
-    label.innerHTML = f"<strong>{display_name}</strong>"
+    description_id = f"metric-help-{metric}"
+    description_text = METRIC_DESCRIPTIONS.get(metric, "")
+    if description_text:
+        label.title = description_text
+
+    strong = js.document.createElement("strong")
+    strong.textContent = display_name
+    label.appendChild(strong)
+
+    if description_text:
+        help_button = js.document.createElement("button")
+        help_button.setAttribute("type", "button")
+        help_button.className = "metric-help-button"
+        help_button.textContent = "?"
+        help_button.title = description_text
+        help_button.setAttribute("aria-label", f"Show description for {display_name}")
+        help_button.setAttribute("aria-expanded", "false")
+        help_button.setAttribute("aria-controls", description_id)
+        help_button.setAttribute("data-target", description_id)
+        help_button.addEventListener("click", help_toggle_proxy)
+        label.appendChild(help_button)
     container.appendChild(label)
+
+    if description_text:
+        help_text = js.document.createElement("div")
+        help_text.id = description_id
+        help_text.className = "metric-help-text"
+        help_text.textContent = description_text
+        help_text.style.display = "none"
+        help_text.setAttribute("data-open", "0")
+        container.appendChild(help_text)
     
     # Create the <canvas>
     canvas = js.document.createElement("canvas")
     canvas.id = canvas_id
-    canvas.width = 340
-    canvas.height = 60
+    css_width = 340
+    css_height = 60
+    try:
+        dpr = float(js.window.devicePixelRatio)
+    except Exception:
+        dpr = 1.0
+    if dpr <= 0:
+        dpr = 1.0
+    canvas.width = int(css_width * dpr)
+    canvas.height = int(css_height * dpr)
+    canvas.style.width = f"{css_width}px"
+    canvas.style.height = f"{css_height}px"
     canvas.style.backgroundColor = "transparent" # Let the page background show through
     canvas.style.touchAction = "none"
     canvas.style.display = "block"
@@ -119,9 +196,9 @@ def reload_video_function(structure):
     # Update counter logic...
     count = js.document.getElementById('myCounter')
     if question_index <= 25:
-        count.innerHTML = f"<span style=\"color: #440000\">{question_index+1}/26 (up to {MAX_ANSWERS})<span>"
+        count.innerHTML = f"<span style=\"color: #440000\">{question_index+1}/{MAX_ANSWERS+2}<span>"
     else:
-        count.innerHTML = f"<span style=\"color: #007700\">{question_index+1}/2 (up to {MAX_ANSWERS})<span>"
+        count.innerHTML = f"<span style=\"color: #007700\">{question_index+1}/{MAX_ANSWERS+2}<span>"
 
 def getTouchPos(canvas, touchEvent):
     rect = canvas.getBoundingClientRect()
