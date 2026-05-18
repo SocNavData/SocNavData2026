@@ -53,7 +53,7 @@
 
         .video-panel {
             flex: 1 1 480px;
-            max-width: 650px;
+            max-width: 600px;
             text-align: left;
         }
 
@@ -63,11 +63,7 @@
             text-align: center;
         }
 
-        < !-- #slider-container p:first-of-type {
-            margin-top: 0px !important;
-        }
-
-        -->@media (max-width: 900px) {
+        @media (max-width: 800px) {
             .video-rating-layout {
                 flex-direction: column;
                 align-items: center;
@@ -91,6 +87,39 @@
             width: 340px;
             height: 120px;
             touch-action: none;
+        }
+
+        .metric-help-button {
+            border: 1px solid #cbd5e1;
+            background-color: #f1f5f9;
+            color: #475569;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+        }
+
+        .metric-help-button:focus-visible {
+            outline: 2px solid #94a3b8;
+            outline-offset: 2px;
+        }
+
+        .metric-help-text {
+            margin: 6px auto 0;
+            max-width: 340px;
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.4;
+            text-align: center;
         }
     </style>
 </head>
@@ -202,30 +231,38 @@
                     dangerous proximity?</li>
                 <li><strong>Predictability:</strong> How easy is it to predict what the robot will do?</li>
                 <li><strong>Naturalness:</strong> How human-like, smooth, and fluent does the motion appear?</li>
-                <li><strong>Social Appropriateness:</strong> Is the robot following the expected social conventions in
-                    this case? Would you choose the same trajectory of the robot?</li>
+                <li><strong>Socialness:</strong> Is the robot following the expected social conventions in
+                    this case?</li>
                 <li><strong>Overall score:</strong> Overall, how acceptable is this robot behavior in a shared human
                     environment?</li>
             </ul>
             <p>You can use the full range of each slider. There are no right or wrong answers.</p>
         </div>
-        <div class="page" id="page-6">
+        <div class="page" id="page-6" style="height: fit-content;">
             <h2 id="myHeader"></h2>
-            <div id="video-title" style="width: 100%; text-align: left; max-width: 650px; margin: 0 auto;">
+            <div id="video-title" style="width: 100%; text-align: center; max-width: 650px; margin: 0 auto;">
                     <p>Provide the metrics evaluation for the following trajectory:<br /><strong><span
                                 id="myDescription">This is the description</span></strong></p>
                 </div>
             <div class="video-rating-layout">
                 <div class="video-panel">
                     <!-- <img id="myVideo" class="responsive-video" src="" alt="Trajectory playback"> -->
-                    <video id="myVideo" class="responsive-video" controls>
-                        <source id="myVideoSource1" src="video.webm" type="video/webm">
-                        <source id="myVideoSource2" src="video.mp4" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
+                    <div id = "video">
+                        <video id="myVideo" class="responsive-video" controls>
+                            <source id="myVideoSource1" src="video.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                    <div class="counter">
+                        <h2 id="myCounter" style="text-align: center;"></h2>
+                    </div>
                 </div>
                 <div class="slider-panel">
                     <div id="slider-container"></div>
+                    <div id="buttons-video-anchor"></div>
+                    <!--<div class="counter">
+                        <h2 id="myCounter"></h2>
+                    </div> -->
                     <!--<div class="buttons">
                         <button id="prev-btn">prev</button>
                         <button id="next-btn">next</button><br />
@@ -246,13 +283,15 @@
             //<canvas id="myCanvasComfort" width="340px" height="120" style="background-color: #ffffffff; touch-action: none;"></canvas>-->
             <br/>
         </div>
-        <div class="buttons">
-            <button id="prev-btn">prev</button>
-            <button id="next-btn">next</button><br />
-            <button id="cancel-btn">cancel</button>
-            <button id="send-btn">send</button>
-        </div> 
-        <h2 id="myCounter"></h2>
+        <div id="buttons-default-anchor">
+            <div class="buttons">
+                <button id="prev-btn">prev</button>
+                <button id="next-btn">next</button><br />
+                <button id="cancel-btn">cancel</button>
+                <button id="send-btn">send</button>
+            </div>
+        </div>
+        <!-- <h2 id="myCounter"></h2> -->
     </div>
 
     <py-script type="py" src="./surveycode.py"></py-script>
@@ -263,19 +302,41 @@
         let answer_set = 0;
         let reload_video = 1;
         let video_watched = 0;
+        const MAX_ANSWERS = 28; 
+        //<!-- 26 and the control video repeated twice -->
 
         const pages = document.querySelectorAll('.page');
         const prevBtn = document.getElementById('prev-btn');
         const nextBtn = document.getElementById('next-btn');
         const cancelBtn = document.getElementById('cancel-btn');
         const sendBtn = document.getElementById('send-btn');
+        const buttonsContainer = document.querySelector('.buttons');
+        const buttonsDefaultAnchor = document.getElementById('buttons-default-anchor');
+        const buttonsVideoAnchor = document.getElementById('buttons-video-anchor');
         const checkbox = document.getElementById('agree-checkbox');
         const video = document.getElementById('myVideo');
         const canvas = document.getElementById('myCanvas');
 
+        function closeMetricHelp() {
+            document.querySelectorAll('.metric-help-text').forEach(panel => {
+                panel.style.display = 'none';
+                panel.setAttribute('data-open', '0');
+            });
+            document.querySelectorAll('.metric-help-button').forEach(button => {
+                button.setAttribute('aria-expanded', 'false');
+            });
+        }
+
         function showPage(page) {
             pages.forEach(p => p.classList.remove('active'));
             document.getElementById(`page-${page}`).classList.add('active');
+
+            closeMetricHelp();
+
+            const targetAnchor = page === 6 ? buttonsVideoAnchor : buttonsDefaultAnchor;
+            if (targetAnchor && buttonsContainer && buttonsContainer.parentElement !== targetAnchor) {
+                targetAnchor.appendChild(buttonsContainer);
+            }
         }
 
         window.onload = function () {
@@ -370,17 +431,22 @@
             else if (currentPage === 6) {
                 //video_watched = 1;
                 if (answer_set === 1) {
+                    if (questionIndex >= MAX_ANSWERS - 1) {
+                        sendBtn.click();
+                        return;
+                    }
+
                     questionIndex += 1;
                     answer_set = 0;
                     reload_video = 1;
                     video_watched = 0;
 
-                    if (questionIndex >= 300) {
-                        sendBtn.click();
-                    }
-                    else {
-                        showPage(currentPage);
-                    }
+                    //if (questionIndex >= 30) {
+                    //    sendBtn.click();
+                    //}
+                    //else {
+                    showPage(currentPage);
+                    //}
                 }
                 else {
                     alert('Please, provide an answer before proceeding to the next trajectory.');

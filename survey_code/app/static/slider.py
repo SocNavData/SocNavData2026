@@ -34,28 +34,37 @@ class Slider(object):
         self.metric_name = metric_name
         self.expected_metrics = expected_metrics
         self.radius = 14
+        self.track_margin = 55
         self.shown_message = False
         self.ctx = self.canvas.getContext('2d')
         self.structure = structure
+        try:
+            self.dpr = float(js.window.devicePixelRatio)
+        except Exception:
+            self.dpr = 1.0
+        if self.dpr <= 0:
+            self.dpr = 1.0
         self.off()
 
     def draw(self, event=None):
         canvas = self.canvas
-        radius = 16 # Slightly larger, more tactile thumb
-        
-        # Generous margin so text breathes
-        margin = 55
+        radius = 13 # Slightly larger, more tactile thumb
+        margin = self.track_margin
+        dpr = self.dpr
+        canvas_w = canvas.width / dpr
+        canvas_h = canvas.height / dpr
         x_start = margin
-        x_end = canvas.width - margin
-        
+        x_end = canvas_w - margin
+
         ctx = self.ctx
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+        ctx.clearRect(0, 0, canvas_w, canvas_h)
 
         video_watched = int(js.eval("video_watched"))
         if video_watched != 1:
             return
 
-        slider_offset = 15
+        slider_offset = 13
 
         # ---------------------------------------------------
         # 1. DRAW MODERN TRACK (Thick, rounded, light gray)
@@ -65,13 +74,13 @@ class Slider(object):
         ctx.strokeStyle = "#e2e8f0" # Modern light slate-gray
         
         ctx.beginPath()
-        ctx.moveTo(x_start, canvas.height/2+slider_offset)
-        ctx.lineTo(x_end, canvas.height/2+slider_offset)
+        ctx.moveTo(x_start, canvas_h/2+slider_offset)
+        ctx.lineTo(x_end, canvas_h/2+slider_offset)
         ctx.stroke()
 
         # Optional: Draw a center marker (subtle dot instead of a harsh line)
         ctx.beginPath()
-        ctx.arc((x_start+x_end)//2, canvas.height/2+slider_offset, 4, 0, 6.28)
+        ctx.arc((x_start+x_end)//2, canvas_h/2+slider_offset, 4, 0, 6.28)
         ctx.fillStyle = "#cbd5e1"
         ctx.fill()
 
@@ -81,7 +90,7 @@ class Slider(object):
         if self.value is not None:
             ctx.beginPath()
             x = x_start + self.value*(x_end-x_start)
-            y = canvas.height//2+slider_offset
+            y = canvas_h//2+slider_offset
             ctx.arc(int(x), int(y), int(radius), 0, 6.28)
             
             # Dynamic Red-to-Green Color
@@ -109,21 +118,20 @@ class Slider(object):
         # 3. DRAW MODERN TYPOGRAPHY (Sans-serif, muted colors)
         # ---------------------------------------------------
         # Using a modern font stack
-        ctx.font = "14px 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        ctx.font = "13px 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
         ctx.fillStyle = "#64748b" # Muted slate text so it isn't aggressively black
         ctx.textBaseline = "top"
         ctx.textAlign = "center"
 
+        label_y = 5
         # Left label
-        ctx.fillText("Extremely", x_start, 0)
-        ctx.fillText("bad", x_start, 20)
+        ctx.fillText("Extremely bad", x_start, label_y)
         
         # Center label
-        ctx.fillText("Fair", (x_start+x_end)//2, 20)
+        ctx.fillText("Fair", (x_start+x_end)//2, label_y)
         
         # Right label
-        ctx.fillText("Extremely", x_end, 0)
-        ctx.fillText("good", x_end, 20)
+        ctx.fillText("Extremely good", x_end, label_y)
 
 
     def update_pose(self, x, y):
@@ -133,8 +141,10 @@ class Slider(object):
         #     return
 
         radius = self.radius
-        x_start = int(2*radius)
-        x_end = int(self.canvas.width - 2*radius)
+        dpr = self.dpr
+        canvas_w = self.canvas.width / dpr
+        x_start = int(self.track_margin)
+        x_end = int(canvas_w - self.track_margin)
 
         x1 = x_start
         y1 = radius
