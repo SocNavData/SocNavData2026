@@ -327,13 +327,9 @@ else:
         #"static/indices.txt",
     _,_,_,lista = tasks.get_tasks_and_probabilities()
     #if lista is None:
-    print("Could not find indices file in any known location. Generating random indices.")
+    #print("Could not find indices file in any known location. Generating random indices.")
     structure["answers"] = {}
     structure["indices"] = [None] * MAX_ANSWERS
-
-    #structure["indices"] = None
-    structure["descriptions"] = tasks.generate_descriptions()
-    tasks.fix_fixed_tasks(structure)
 
     exclude_ids = tasks.get_fixed_task_video_ids()
     available_indices = [
@@ -348,12 +344,23 @@ else:
         if idx is None:
             structure["indices"][i] = next(random_iter)
 
-    control_index = random.choice(random_indices) if random_indices else random.choice(structure["indices"])
+    structure["descriptions"] = tasks.build_descriptions_from_indices(structure["indices"])
+    tasks.fix_fixed_tasks(structure)
 
+    control_candidates = [
+        idx for idx in structure["indices"]
+        if idx not in exclude_ids
+    ]
+    control_index = random.choice(control_candidates) if control_candidates else random.choice(structure["indices"])
+
+    control_description = tasks.get_description_for_index(
+        control_index,
+        "This is a control video to check if you are paying attention. Please rate it as you would normally do, there is no right or wrong answer for this one."
+    )
     structure["indices"].insert(0, control_index)
     structure["indices"].append(control_index)
-    structure["descriptions"].insert(0, "This is a control video to check if you are paying attention. Please rate it as you would normally do, there is no right or wrong answer for this one.")
-    structure["descriptions"].append("This is a control video to check if you are paying attention. Please rate it as you would normally do, there is no right or wrong answer for this one.")
+    structure["descriptions"].insert(0, control_description)
+    structure["descriptions"].append(control_description)
     #else:
     #    #print(lista)
     #    try:

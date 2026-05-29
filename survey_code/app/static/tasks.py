@@ -8,8 +8,14 @@ except Exception:
     open_url = None
 
 MAX_TASKS = 28-2
+FIXED_DESCRIPTIONS_FILE = "fixed_descriptions.json"
+_FIXED_DESCRIPTIONS_CACHE = None
 
 FIXED_TASKS = [
+    #these are the control questions that will be fixed in the survey, to ensure data quality. The format is (position_in_survey, video_id, description)
+    # keeping in mind that the position is 0-indexed and there is an extra control question, so position 4 means the 6th video shown to the user
+    # the descriptiona are assinged in the fixed_descriptions.json file, so they can be easily updated without changing the code. The descriptions in the json file should match the video_id, but we provide a default description here as well in case the json file is not found or does not contain the correct entries.
+    #the other indices, if not found in the json file, will be generated randomly from the all_contexts.txt file, so they can be easily changed by updating that file without changing the code.
     #(0, 13, "A robot is being nice"),
     (4, 126, "First control question: A robot is trying to locate the source of a noise in a library."),
     (9, 318, "Second control question: A robot is navigating as part of a delivery task in a museum."),
@@ -60,6 +66,48 @@ def _parse_indices_text(text):
         except ValueError:
             continue
     return indices
+
+def _load_fixed_descriptions():
+    global _FIXED_DESCRIPTIONS_CACHE
+    if _FIXED_DESCRIPTIONS_CACHE is not None:
+        return _FIXED_DESCRIPTIONS_CACHE
+
+    fixed = None
+    if open_url is not None:
+        for url in (f"/static/{FIXED_DESCRIPTIONS_FILE}", f"/{FIXED_DESCRIPTIONS_FILE}"):
+            try:
+                response = open_url(url).read()
+                if isinstance(response, bytes):
+                    response = response.decode("utf-8", errors="replace")
+                fixed = json.loads(response)
+                break
+            except Exception:
+                fixed = None
+
+    if fixed is None:
+        try:
+            with open(FIXED_DESCRIPTIONS_FILE, "r") as fd:
+                fixed = json.load(fd)
+        except FileNotFoundError:
+            fixed = None
+        except Exception:
+            fixed = None
+
+    if isinstance(fixed, dict):
+        normalized = {}
+        for key, value in fixed.items():
+            try:
+                key_int = int(key)
+            except (TypeError, ValueError):
+                continue
+            if isinstance(value, str):
+                normalized[key_int] = value
+        fixed = normalized
+    else:
+        fixed = None
+
+    _FIXED_DESCRIPTIONS_CACHE = fixed
+    return fixed
 
 def get_tasks_and_probabilities():
     with open("all_contexts.txt", "r") as fd:
@@ -176,6 +224,40 @@ def generate_descriptions():
     return descriptions
 
 
+def build_descriptions_from_indices(indices):
+    fixed = _load_fixed_descriptions()
+    if not fixed:
+        return generate_descriptions()
+
+    descriptions = []
+    for idx in indices:
+        if idx is None:
+            descriptions.append("")
+            continue
+        try:
+            idx_int = int(idx)
+        except (TypeError, ValueError):
+            descriptions.append("")
+            continue
+        desc = fixed.get(idx_int)
+        if not desc:
+            js.console.log(f"Missing fixed description for video {idx_int}")
+            desc = ""
+        descriptions.append(desc)
+    return descriptions
+
+
+def get_description_for_index(video_id, default=""):
+    fixed = _load_fixed_descriptions()
+    if not fixed:
+        return default
+    try:
+        idx_int = int(video_id)
+    except (TypeError, ValueError):
+        return default
+    return fixed.get(idx_int, default)
+
+
 
 def fix_fixed_tasks(structure):
     indices = structure.get("indices")
@@ -184,7 +266,7 @@ def fix_fixed_tasks(structure):
         if indices is not None and position < len(indices):
             indices[position] = video_id
         if descriptions is not None and position < len(descriptions):
-            descriptions[position] = desc
+            descriptions[position] = get_description_for_index(video_id, desc)
     #structure["descriptions"][7] = "A robot is trying to locate the source of a noise in a library."
     ##  2 [ R E P E A T E D --  9]
     #structure["indices"][11] = 2007
