@@ -352,7 +352,7 @@ else:
         if idx not in exclude_ids
     ]
     control_index = random.choice(control_candidates) if control_candidates else random.choice(structure["indices"])
-
+    # The description in the control video will not be the default one, it will be picked in the default tasks
     control_description = tasks.get_description_for_index(
         control_index,
         "This is a control video to check if you are paying attention. Please rate it as you would normally do, there is no right or wrong answer for this one."

@@ -12,18 +12,20 @@ FIXED_DESCRIPTIONS_FILE = "fixed_descriptions.json"
 _FIXED_DESCRIPTIONS_CACHE = None
 
 FIXED_TASKS = [
-    #these are the control questions that will be fixed in the survey, to ensure data quality. The format is (position_in_survey, video_id, description)
+    # these are the control questions that will be fixed in the survey, to ensure data quality. The format is (position_in_survey, video_id, description)
     # keeping in mind that the position is 0-indexed and there is an extra control question, so position 4 means the 6th video shown to the user
-    # the descriptiona are assinged in the fixed_descriptions.json file, so they can be easily updated without changing the code. The descriptions in the json file should match the video_id, but we provide a default description here as well in case the json file is not found or does not contain the correct entries.
-    #the other indices, if not found in the json file, will be generated randomly from the all_contexts.txt file, so they can be easily changed by updating that file without changing the code.
+    # the descriptions are assigned in the fixed_descriptions.json file, so they can be easily updated without changing the code.
+    # The descriptions in the json file should match the video_id, 
+    # but we provide a default description here as well in case the json file is not found or does not contain the correct entries.
+    # The other indices, if not found in the json file, will be generated randomly from the all_contexts.txt file, so they can be easily changed by updating that file without changing the code.
     #(0, 13, "A robot is being nice"),
     (4, 126, "First control question: A robot is trying to locate the source of a noise in a library."),
     (9, 318, "Second control question: A robot is navigating as part of a delivery task in a museum."),
     (11, 1083, "Third control question: A robot is trying to locate the glasses of a patient in a hospital."),
-    #(13, 1095, "A robot is exploding around looking for people interested in its services."),
-    #(14, 999, "A robot is exploding around looking for people interested in its services."),
+    #(13, 1095, "A robot is exploring around looking for people interested in its services."),
+    #(14, 999, "A robot is exploring around looking for people interested in its services."),
     (18, 1012, "Fourth control question: A hotel robot is inspecting the floor to ensure it's safe to walk."),
-    #(24, 1040, "A robot is exploding around looking for people interested in its services."),
+    #(24, 1040, "A robot is exploring around looking for people interested in its services."),
     (20, 1054, "Fifth control question: A drug delivery robot is working in a hospital."),
 ]
 

@@ -67,7 +67,7 @@ class Slider(object):
         slider_offset = 13
 
         # ---------------------------------------------------
-        # 1. DRAW MODERN TRACK (Thick, rounded, light gray)
+        # 1. This is to change the shape of the track where the thumb slider is
         # ---------------------------------------------------
         ctx.lineCap = "round"
         ctx.lineWidth = 9  # Thicker track
@@ -85,7 +85,7 @@ class Slider(object):
         ctx.fill()
 
         # ---------------------------------------------------
-        # 2. DRAW THUMB (With drop shadow and border)
+        # 2. Circle slider on top of the track
         # ---------------------------------------------------
         if self.value is not None:
             ctx.beginPath()
@@ -115,7 +115,7 @@ class Slider(object):
             ctx.stroke()
 
         # ---------------------------------------------------
-        # 3. DRAW MODERN TYPOGRAPHY (Sans-serif, muted colors)
+        # 3. Font selection
         # ---------------------------------------------------
         # Using a modern font stack
         ctx.font = "13px 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
