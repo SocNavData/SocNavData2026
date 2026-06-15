@@ -81,8 +81,8 @@ def submit():
                 print("Could not find 'indices' field in data")
         # log a small preview of saved indices
         try:
-            with open(path_indices, "r") as nunzio:
-                preview = nunzio.read(200)
+            with open(path_indices, "r") as written_indices:
+                preview = written_indices.read(200)
             print("Saved indices preview:", preview)
         except Exception as e:
             print("Could not read saved indices:", e)
