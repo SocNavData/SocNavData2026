@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reveal.js – Top Title Example</title>
+
+  <!-- Reveal.js from CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/theme/moon.min.css">
+
+  <style>
+
+    .reveal .slides section.top-title {
+      top: 0 !important;
+      height: 100% !important;
+      /* Use flex so .slide-body can be centred in the remaining space */
+      display: flex !important;
+      flex-direction: column;
+      /* h2 is taken out of flow (absolute), so this centres .slide-body */
+      justify-content: center;
+      align-items: center;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Pin h2 to the top of the slide area */
+    .reveal .slides section h2 {
+      position: absolute;
+      top: 20px;
+      left: 0;
+      right: 0;
+      margin: 0;
+      text-align: center;
+      font-size: 1.4em;
+      padding-bottom: 12px;
+    }
+
+    /* .slide-body stays vertically centred in the slide */
+    .reveal .slides section.top-title .slide-body {
+      text-align: left;
+      width: 80%;
+    }
+
+
+  </style>
+</head>
+<body>
+
+<div class="reveal">
+  <div class="slides">
+
+    <!-- ① Normal slide – completely unaffected -->
+    <section>
+      <h2>Normal Slide</h2>
+      <p>This slide uses the default reveal.js centred layout.<br>
+         The <code>h2</code> sits wherever the theme puts it.</p>
+    </section>
+
+    <!-- ② Top-title slide: h2 pinned to top, body content centred -->
+    <section class="top-title">
+      <h2>Title Pinned to Top</h2>
+      <div class="slide-body">
+        <p>The heading above is anchored to the top of the slide.</p>
+        <ul>
+          <li>This content is vertically centred in the slide</li>
+          <li>Great for slides with lists or code</li>
+          <li>Other slides are not affected at all</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ③ Another normal slide – still unaffected -->
+    <section>
+      <h2>Another Normal Slide</h2>
+      <p>Back to the default centred layout.<br>No extra classes, no extra CSS.</p>
+    </section>
+
+    <!-- ④ Another top-title slide -->
+    <section class="top-title">
+      <h2>Second Top-Title Slide</h2>
+      <div class="slide-body">
+        <p>Add <code>class="top-title"</code> to any <code>&lt;section&gt;</code>.</p>
+        <p>Wrap your content in <code>&lt;div class="slide-body"&gt;</code> and it
+           will stay centred while the title floats to the top.</p>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    transition: 'slide',
+  });
+</script>
+</body>
+</html>

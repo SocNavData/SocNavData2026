@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SocNav Simulator</title>
+<link rel="stylesheet" href="https://pyscript.net/releases/2026.1.1/core.css">
+<script type="module" src="https://pyscript.net/releases/2026.1.1/core.js"></script>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --panel: #ffffff;
+    --panel-border: #dde2e7;
+    --grid-line: #e8ebee;
+    --grid-line-major: #d3d9de;
+    --axis-line: #b7c0c8;
+    --text: #232b34;
+    --text-dim: #6b7480;
+    --accent-robot: #1f9d90;
+    --accent-human: #c07a1f;
+    --accent-table: #6b7480;
+    --accent-danger: #c94a4d;
+    --table-fill: #ccd2d8;
+    --table-stroke: #8b95a1;
+    --select-ring: #12161c;
+    --handle-fill: #12161c;
+    --handle-stroke: #ffffff;
+    --entity-outline: #12161c;
+    --btn-bg: #eaedf1;
+    --btn-border: #d5dae0;
+    --btn-hover-bg: #dfe4e9;
+    --btn-active-bg: #d3e6e2;
+    --btn-active-border: #9cc9c1;
+    --input-bg: #ffffff;
+    --input-border: #c7ccd2;
+    --accent-wall: #3d454e;
+    --mono: "SF Mono", "JetBrains Mono", Consolas, monospace;
+    --sans: -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  html.dark {
+    --bg: #12161c;
+    --panel: #1a2028;
+    --panel-border: #2a323d;
+    --grid-line: #232b34;
+    --grid-line-major: #2f3944;
+    --axis-line: #3a4552;
+    --text: #d7dde3;
+    --text-dim: #7c8896;
+    --accent-robot: #4fd1c5;
+    --accent-human: #f0b45e;
+    --accent-table: #8b95a1;
+    --accent-danger: #e5686b;
+    --table-fill: #3a4147;
+    --table-stroke: #565f68;
+    --select-ring: #eef3f7;
+    --handle-fill: #eef3f7;
+    --handle-stroke: #12161c;
+    --entity-outline: #0b0f13;
+    --btn-bg: #232b34;
+    --btn-border: #333e4a;
+    --btn-hover-bg: #2b3540;
+    --btn-active-bg: #23303a;
+    --btn-active-border: #3a4a58;
+    --input-bg: #232b34;
+    --input-border: #333e4a;
+    --accent-wall: #aeb6bd;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: var(--sans); overflow: hidden;
+  }
+  /* Defensive: PyScript's own overlay elements are known to sometimes affect
+     page layout even when disabled/before fully removed. Force them out of
+     normal flow so they can never push or cover our own UI. */
+  py-splashscreen, py-terminal, script[type="py"] {
+    position: absolute !important;
+  }
+  #app { display: flex; height: 100vh; width: 100vw; }
+
+  #toolbar {
+    width: 190px; flex-shrink: 0; background: var(--panel);
+    border-right: 1px solid var(--panel-border);
+    padding: 14px 12px; display: flex; flex-direction: column; gap: 6px;
+    overflow-y: auto;
+  }
+  #toolbar h1 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-dim); margin: 0 0 10px 2px; font-weight: 600;
+  }
+  .tool-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: transparent; border: 1px solid transparent; color: var(--text);
+    padding: 8px 10px; border-radius: 6px; font-size: 13px; text-align: left;
+    cursor: pointer; font-family: var(--sans);
+  }
+  .tool-btn:hover { background: var(--btn-hover-bg); }
+  .tool-btn.active { background: var(--btn-active-bg); border-color: var(--btn-active-border); }
+  .tool-btn .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .sep { height: 1px; background: var(--panel-border); margin: 8px 0; }
+  .hint { font-size: 11px; color: var(--text-dim); padding: 0 2px; line-height: 1.5; }
+
+  #canvas-wrap { flex: 1; position: relative; display: flex; flex-direction: column; }
+  #topbar {
+    height: 46px; flex-shrink: 0; background: var(--panel);
+    border-bottom: 1px solid var(--panel-border);
+    display: flex; align-items: center; gap: 10px; padding: 0 14px;
+  }
+  #topbar button {
+    background: var(--btn-bg); border: 1px solid var(--btn-border); color: var(--text);
+    padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer;
+    font-family: var(--sans); display: flex; align-items: center; gap: 6px;
+  }
+  #topbar button:hover { background: var(--btn-hover-bg); }
+  #topbar button.primary { background: var(--accent-robot); color: #0b1113; border-color: var(--accent-robot); font-weight: 600; }
+  #topbar button.primary:hover { filter: brightness(1.08); }
+  #topbar .readout { font-family: var(--mono); font-size: 12px; color: var(--text-dim); margin-left: auto; }
+  #topbar .readout b { color: var(--text); }
+  #topbar label { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+  #topbar select {
+    background: var(--input-bg); border: 1px solid var(--input-border); color: var(--text);
+    padding: 5px 6px; border-radius: 5px; font-size: 12px; font-family: var(--sans); max-width: 220px;
+  }
+  #topbar input[type=range] { width: 90px; }
+
+  #canvas-scroll { flex: 1; position: relative; overflow: hidden; background: var(--bg); }
+  canvas { position: absolute; top: 0; left: 0; cursor: crosshair; }
+
+  #inspector {
+    width: 230px; flex-shrink: 0; background: var(--panel);
+    border-left: 1px solid var(--panel-border); padding: 14px 14px;
+    overflow-y: auto;
+  }
+  #inspector h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-dim); margin: 0 0 12px 0; font-weight: 600;
+  }
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 4px;
+  }
+  .field input[type=number] {
+    width: 100%; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--text);
+    padding: 6px 8px; border-radius: 5px; font-family: var(--mono); font-size: 13px;
+  }
+  .field-row { display: flex; gap: 8px; }
+  .field-row .field { flex: 1; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text); margin-bottom: 12px; }
+  #inspector .empty { color: var(--text-dim); font-size: 12px; line-height: 1.6; }
+  #inspector button.action {
+    width: 100%; background: var(--btn-bg); border: 1px solid var(--btn-border); color: var(--text);
+    padding: 7px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-top: 4px;
+  }
+  #inspector button.action:hover { background: var(--btn-hover-bg); }
+  #inspector button.danger { color: var(--accent-danger); border-color: #4a2c2d; }
+  #inspector button.danger:hover { background: #2b1f20; }
+  .badge {
+    display: inline-block; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 3px 8px; border-radius: 20px; margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .range-field input[type=range] { width: 100%; }
+  .range-field .range-val { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+
+  #modal-overlay {
+    position: fixed; inset: 0; background: rgba(10, 12, 15, 0.5);
+    display: none; align-items: center; justify-content: center; z-index: 50;
+  }
+  #modal-overlay.open { display: flex; }
+  #modal-box {
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 10px;
+    padding: 20px 22px; max-width: 300px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  #modal-box p { margin: 0 0 16px 0; font-size: 13px; color: var(--text); line-height: 1.5; }
+  #modal-box .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  #modal-box button {
+    padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: var(--sans);
+    border: 1px solid var(--panel-border); background: transparent; color: var(--text);
+  }
+  #modal-box button.confirm { background: var(--accent-danger); border-color: var(--accent-danger); color: #fff; }
+
+  .toolbar-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; color: var(--text); padding: 6px 4px;
+  }
+  .switch { position: relative; width: 34px; height: 19px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider {
+    position: absolute; inset: 0; background: var(--panel-border); border-radius: 20px;
+    cursor: pointer; transition: 0.15s;
+  }
+  .switch .slider::before {
+    content: ""; position: absolute; width: 15px; height: 15px; left: 2px; top: 2px;
+    background: #fff; border-radius: 50%; transition: 0.15s;
+  }
+  .switch input:checked + .slider { background: var(--accent-robot); }
+  .switch input:checked + .slider::before { transform: translateX(15px); }
+
+  .model-status {
+    font-size: 11px; padding: 4px 10px; border-radius: 20px; font-family: var(--mono);
+    white-space: nowrap;
+  }
+  .model-status.loading { background: var(--btn-bg); color: var(--text-dim); }
+  .model-status.ready { background: #1f9d9022; color: var(--accent-robot); }
+  .model-status.error { background: #c94a4d22; color: var(--accent-danger); }
+
+  .result-banner {
+    display: none; padding: 10px 16px; font-size: 13px; border-bottom: 1px solid var(--panel-border);
+    align-items: center; gap: 10px;
+  }
+  .result-banner.show { display: flex; }
+  .result-banner.info { background: var(--btn-bg); color: var(--text); }
+  .result-banner.error { background: #c94a4d18; color: var(--accent-danger); }
+  .result-banner.success { background: #ff830080; color: var(--text); }
+  .result-banner .reward-value { font-family: var(--mono); font-weight: 700; font-size: 15px; }
+  .result-banner .reward-context { color: var(--text-dim); font-size: 12px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="toolbar">
+    <h1>Place</h1>
+    <button class="tool-btn" data-mode="add-robot" id="btn-add-robot"><span class="dot" style="background:var(--accent-robot)"></span>Robot</button>
+    <button class="tool-btn" data-mode="add-human"><span class="dot" style="background:var(--accent-human)"></span>Human</button>
+    <button class="tool-btn" data-mode="add-table"><span class="dot" style="background:var(--accent-table)"></span>Table</button>
+    <div class="sep"></div>
+    <h1>Edit</h1>
+    <button class="tool-btn" data-mode="select">&#8598; Select / Move</button>
+    <button class="tool-btn" data-mode="add-path">&#8226;&#8226;&#8226; Set Path</button>
+    <div class="sep"></div>
+    <h1>Scene</h1>
+    <button class="tool-btn" id="btn-clear-all">&#10005; Clear Everything</button>
+    <div class="sep"></div>
+    <div class="toolbar-toggle">
+      Dark mode
+      <label class="switch">
+        <input type="checkbox" id="dark-mode-toggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="sep"></div>
+    <p class="hint" id="mode-hint">Click Robot / Human / Table, then click on the canvas to place it. Select an item to edit its position, orientation, and path.</p>
+  </div>
+
+  <div id="modal-overlay">
+    <div id="modal-box">
+      <p id="modal-message"></p>
+      <div class="modal-actions">
+        <button id="modal-cancel">Cancel</button>
+        <button class="confirm" id="modal-confirm">Clear everything</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="canvas-wrap">
+    <div id="topbar">
+      <button class="primary" id="btn-play">&#9654; Play</button>
+      <button id="btn-reset">&#8634; Reset</button>
+      <button id="btn-export">&#8681; Export JSON</button>
+      <label>Speed
+        <input type="range" id="speed" min="0.25" max="3" step="0.25" value="1">
+        <span id="speed-val" style="font-family:var(--mono); width: 30px; display:inline-block;">1.0x</span>
+      </label>
+      <label>Context
+        <select id="context-select" style="max-width: 220px;"></select>
+      </label>
+      <div class="readout">t = <b id="time-readout">0.0</b> s <span id="stop-reason" style="margin-left:8px;"></span></div>
+      <div id="model-status" class="model-status loading">Loading reward model&hellip;</div>
+    </div>
+    <div id="result-banner" class="result-banner"></div>
+    <div id="canvas-scroll">
+      <canvas id="canvas"></canvas>
+    </div>
+  </div>
+
+  <div id="inspector">
+    <h2>Inspector</h2>
+    <div id="inspector-body"><p class="empty">Nothing selected. Switch to Select / Move and click an item on the canvas.</p></div>
+  </div>
+
+</div>
+
+<script>
+const CONTEXT_KEYS = ["A assistant robot is performing routine tasks in a restaurant.", "A cleaning robot working in a home is looking for dirty spots to clean.", "A cleaning robot working in a hospital is looking for dirty spots to clean.", "A cleaning robot working in a library is looking for dirty spots to clean.", "A cleaning robot working in a museum is looking for dirty spots to clean.", "A cleaning robot working in a restaurant is looking for dirty spots to clean.", "A cleaning robot working in a school is looking for dirty spots to clean.", "A cleaning robot working in a store is looking for dirty spots to clean.", "A cleaning robot working in a warehouse is looking for dirty spots to clean.", "A delivery robot is navigating in a home.", "A delivery robot is navigating in a home. It works with fragile objects.", "A delivery robot is navigating in a hospital.", "A delivery robot is navigating in a hospital. It works with fragile objects.", "A delivery robot is navigating in a library.", "A delivery robot is navigating in a library. It works with fragile objects.", "A delivery robot is navigating in a museum.", "A delivery robot is navigating in a museum. It works with fragile objects.", "A delivery robot is navigating in a restaurant.", "A delivery robot is navigating in a restaurant. It works with fragile objects.", "A delivery robot is navigating in a school.", "A delivery robot is navigating in a school. It works with fragile objects.", "A delivery robot is navigating in a store.", "A delivery robot is navigating in a store. It works with fragile objects.", "A delivery robot is navigating in a warehouse.", "A delivery robot is navigating in a warehouse. It works with fragile objects.", "A drug delivery robot is working in a hospital.", "A home robot is looking for a fire extinguisher, as it just detected a fire.", "A hospital assistant robot has been asked to go to the goal, with no additional context.", "A hospital assistant robot is asked to collect an object", "A hospital assistant robot is delivering an object", "A hospital robot is looking for a fire extinguisher, as it just detected a fire.", "A hotel robot is inspecting the floor to ensure it's safe to walk.", "A hotel robot is inspecting the foor to ensure it's safe to walk.", "A house assistant robot is asked to collect an object", "A house assistant robot is delivering an object", "A human asks a hospital assistant robot to go to the goal shown.", "A human asks a in-restaurant service robot to go to the goal shown.", "A human asks a last-mile delivery robot to go to the goal shown.", "A human asks a museum guide robot to go to the goal shown.", "A human asks a school guide robot to go to the goal shown.", "A in-restaurant service robot is asked to collect an object", "A in-restaurant service robot is delivering an object", "A lab assistant robot is looking for potential hazards in its environment.", "A last-mile delivery robot is asked to collect an object", "A last-mile delivery robot is delivering an object", "A library robot is looking for a fire extinguisher, as it just detected a fire.", "A museum guide robot has been asked to go to the goal shown, with no additional context.", "A museum guide robot is asked to collect an object", "A museum guide robot is delivering an object", "A museum robot is looking for a fire extinguisher, as it just detected a fire.", "A museum robot roams around looking for people interested in its services.", "A restaurant robot is looking for a fire extinguisher, as it just detected a fire.", "A robot is moving in home to find a user who may want to assign it to a task.", "A robot is moving in hospital to find a user who may want to assign it to a task.", "A robot is moving in library to find a user who may want to assign it to a task.", "A robot is moving in museum to find a user who may want to assign it to a task.", "A robot is moving in restaurant to find a user who may want to assign it to a task.", "A robot is moving in school to find a user who may want to assign it to a task.", "A robot is moving in store to find a user who may want to assign it to a task.", "A robot is moving in warehouse to find a user who may want to assign it to a task.", "A robot is navigating as part of a collection task in a home.", "A robot is navigating as part of a collection task in a home. It works with fragile objects.", "A robot is navigating as part of a collection task in a hospital.", "A robot is navigating as part of a collection task in a hospital. It works with fragile objects.", "A robot is navigating as part of a collection task in a library.", "A robot is navigating as part of a collection task in a library. It works with fragile objects.", "A robot is navigating as part of a collection task in a museum.", "A robot is navigating as part of a collection task in a museum. It works with fragile objects.", "A robot is navigating as part of a collection task in a restaurant.", "A robot is navigating as part of a collection task in a restaurant. It works with fragile objects.", "A robot is navigating as part of a collection task in a school.", "A robot is navigating as part of a collection task in a school. It works with fragile objects.", "A robot is navigating as part of a collection task in a store.", "A robot is navigating as part of a collection task in a store. It works with fragile objects.", "A robot is navigating as part of a collection task in a warehouse.", "A robot is navigating as part of a collection task in a warehouse. It works with fragile objects.", "A robot is navigating as part of a delivery task in a museum.", "A robot is performing routine tasks in a home.", "A robot is performing routine tasks in a hospital.", "A robot is performing routine tasks in a library.", "A robot is performing routine tasks in a museum.", "A robot is performing routine tasks in a restaurant.", "A robot is performing routine tasks in a school.", "A robot is performing routine tasks in a store.", "A robot is performing routine tasks in a warehouse.", "A robot is performing routine tasks in an office.", "A robot is trying to locate the source of a noise in a library.", "A robot is working with lab samples. The samples are part of a routine environmental study to measure pollution.", "A robot is working with lab samples. The samples contain a deadly virus.", "A robot is working with lab samples. The samples contain blood samples.", "A school guide robot is delivering an object", "A school robot is looking for a fire extinguisher, as it just detected a fire.", "A store robot is looking for a fire extinguisher, as it just detected a fire.", "A warehouse robot is looking for a fire extinguisher, as it just detected a fire.", "A warehouse robot is moving around while inspecting the air quality.", "An idle hospital assistant robot decides to explore its environment.", "An idle house assistant robot decides to explore its environment.", "An idle last-mile delivery robot decides to explore its environment.", "An idle museum guide robot decides to explore its environment.", "An idle robot working in a home explores its environment.", "An idle robot working in a home goes to recharge its battery. It has 0% battery left.", "An idle robot working in a home goes to recharge its battery. It has 1% battery left.", "An idle robot working in a home goes to recharge its battery. It has 10% battery left.", "An idle robot working in a home goes to recharge its battery. It has 11% battery left.", "An idle robot working in a home goes to recharge its battery. It has 12% battery left.", "An idle robot working in a home goes to recharge its battery. It has 13% battery left.", "An idle robot working in a home goes to recharge its battery. It has 14% battery left.", "An idle robot working in a home goes to recharge its battery. It has 15% battery left.", "An idle robot working in a home goes to recharge its battery. It has 16% battery left.", "An idle robot working in a home goes to recharge its battery. It has 17% battery left.", "An idle robot working in a home goes to recharge its battery. It has 18% battery left.", "An idle robot working in a home goes to recharge its battery. It has 19% battery left.", "An idle robot working in a home goes to recharge its battery. It has 2% battery left.", "An idle robot working in a home goes to recharge its battery. It has 20% battery left.", "An idle robot working in a home goes to recharge its battery. It has 21% battery left.", "An idle robot working in a home goes to recharge its battery. It has 22% battery left.", "An idle robot working in a home goes to recharge its battery. It has 23% battery left.", "An idle robot working in a home goes to recharge its battery. It has 24% battery left.", "An idle robot working in a home goes to recharge its battery. It has 25% battery left.", "An idle robot working in a home goes to recharge its battery. It has 26% battery left.", "An idle robot working in a home goes to recharge its battery. It has 27% battery left.", "An idle robot working in a home goes to recharge its battery. It has 28% battery left.", "An idle robot working in a home goes to recharge its battery. It has 29% battery left.", "An idle robot working in a home goes to recharge its battery. It has 3% battery left.", "An idle robot working in a home goes to recharge its battery. It has 30% battery left.", "An idle robot working in a home goes to recharge its battery. It has 31% battery left.", "An idle robot working in a home goes to recharge its battery. It has 32% battery left.", "An idle robot working in a home goes to recharge its battery. It has 33% battery left.", "An idle robot working in a home goes to recharge its battery. It has 34% battery left.", "An idle robot working in a home goes to recharge its battery. It has 35% battery left.", "An idle robot working in a home goes to recharge its battery. It has 36% battery left.", "An idle robot working in a home goes to recharge its battery. It has 37% battery left.", "An idle robot working in a home goes to recharge its battery. It has 38% battery left.", "An idle robot working in a home goes to recharge its battery. It has 39% battery left.", "An idle robot working in a home goes to recharge its battery. It has 4% battery left.", "An idle robot working in a home goes to recharge its battery. It has 40% battery left.", "An idle robot working in a home goes to recharge its battery. It has 41% battery left.", "An idle robot working in a home goes to recharge its battery. It has 42% battery left.", "An idle robot working in a home goes to recharge its battery. It has 43% battery left.", "An idle robot working in a home goes to recharge its battery. It has 44% battery left.", "An idle robot working in a home goes to recharge its battery. It has 45% battery left.", "An idle robot working in a home goes to recharge its battery. It has 46% battery left.", "An idle robot working in a home goes to recharge its battery. It has 47% battery left.", "An idle robot working in a home goes to recharge its battery. It has 48% battery left.", "An idle robot working in a home goes to recharge its battery. It has 49% battery left.", "An idle robot working in a home goes to recharge its battery. It has 5% battery left.", "An idle robot working in a home goes to recharge its battery. It has 50% battery left.", "An idle robot working in a home goes to recharge its battery. It has 51% battery left.", "An idle robot working in a home goes to recharge its battery. It has 52% battery left.", "An idle robot working in a home goes to recharge its battery. It has 53% battery left.", "An idle robot working in a home goes to recharge its battery. It has 54% battery left.", "An idle robot working in a home goes to recharge its battery. It has 55% battery left.", "An idle robot working in a home goes to recharge its battery. It has 56% battery left.", "An idle robot working in a home goes to recharge its battery. It has 57% battery left.", "An idle robot working in a home goes to recharge its battery. It has 58% battery left.", "An idle robot working in a home goes to recharge its battery. It has 59% battery left.", "An idle robot working in a home goes to recharge its battery. It has 6% battery left.", "An idle robot working in a home goes to recharge its battery. It has 60% battery left.", "An idle robot working in a home goes to recharge its battery. It has 61% battery left.", "An idle robot working in a home goes to recharge its battery. It has 62% battery left.", "An idle robot working in a home goes to recharge its battery. It has 63% battery left.", "An idle robot working in a home goes to recharge its battery. It has 64% battery left.", "An idle robot working in a home goes to recharge its battery. It has 65% battery left.", "An idle robot working in a home goes to recharge its battery. It has 66% battery left.", "An idle robot working in a home goes to recharge its battery. It has 67% battery left.", "An idle robot working in a home goes to recharge its battery. It has 68% battery left.", "An idle robot working in a home goes to recharge its battery. It has 69% battery left.", "An idle robot working in a home goes to recharge its battery. It has 7% battery left.", "An idle robot working in a home goes to recharge its battery. It has 70% battery left.", "An idle robot working in a home goes to recharge its battery. It has 71% battery left.", "An idle robot working in a home goes to recharge its battery. It has 72% battery left.", "An idle robot working in a home goes to recharge its battery. It has 73% battery left.", "An idle robot working in a home goes to recharge its battery. It has 74% battery left.", "An idle robot working in a home goes to recharge its battery. It has 75% battery left.", "An idle robot working in a home goes to recharge its battery. It has 76% battery left.", "An idle robot working in a home goes to recharge its battery. It has 77% battery left.", "An idle robot working in a home goes to recharge its battery. It has 78% battery left.", "An idle robot working in a home goes to recharge its battery. It has 79% battery left.", "An idle robot working in a home goes to recharge its battery. It has 8% battery left.", "An idle robot working in a home goes to recharge its battery. It has 80% battery left.", "An idle robot working in a home goes to recharge its battery. It has 81% battery left.", "An idle robot working in a home goes to recharge its battery. It has 82% battery left.", "An idle robot working in a home goes to recharge its battery. It has 83% battery left.", "An idle robot working in a home goes to recharge its battery. It has 84% battery left.", "An idle robot working in a home goes to recharge its battery. It has 85% battery left.", "An idle robot working in a home goes to recharge its battery. It has 86% battery left.", "An idle robot working in a home goes to recharge its battery. It has 87% battery left.", "An idle robot working in a home goes to recharge its battery. It has 88% battery left.", "An idle robot working in a home goes to recharge its battery. It has 89% battery left.", "An idle robot working in a home goes to recharge its battery. It has 9% battery left.", "An idle robot working in a home goes to recharge its battery. It has 90% battery left.", "An idle robot working in a home goes to recharge its battery. It has 91% battery left.", "An idle robot working in a home goes to recharge its battery. It has 92% battery left.", "An idle robot working in a home goes to recharge its battery. It has 93% battery left.", "An idle robot working in a home goes to recharge its battery. It has 94% battery left.", "An idle robot working in a hospital explores its environment.", "An idle robot working in a hospital goes to recharge its battery. It has 0% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 1% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 10% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 11% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 12% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 13% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 14% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 15% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 16% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 17% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 18% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 19% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 2% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 20% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 21% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 22% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 23% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 24% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 25% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 26% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 27% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 28% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 29% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 3% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 30% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 31% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 32% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 33% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 34% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 35% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 36% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 37% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 38% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 39% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 4% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 40% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 41% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 42% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 43% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 44% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 45% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 46% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 47% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 48% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 49% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 5% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 50% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 51% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 52% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 53% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 54% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 55% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 56% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 57% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 58% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 59% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 6% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 60% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 61% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 62% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 63% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 64% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 65% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 66% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 67% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 68% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 69% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 7% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 70% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 71% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 72% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 73% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 74% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 75% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 76% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 77% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 78% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 79% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 8% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 80% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 81% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 82% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 83% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 84% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 85% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 86% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 87% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 88% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 89% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 9% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 90% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 91% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 92% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 93% battery left.", "An idle robot working in a hospital goes to recharge its battery. It has 94% battery left.", "An idle robot working in a library explores its environment.", "An idle robot working in a library goes to recharge its battery. It has 0% battery left.", "An idle robot working in a library goes to recharge its battery. It has 1% battery left.", "An idle robot working in a library goes to recharge its battery. It has 10% battery left.", "An idle robot working in a library goes to recharge its battery. It has 11% battery left.", "An idle robot working in a library goes to recharge its battery. It has 12% battery left.", "An idle robot working in a library goes to recharge its battery. It has 13% battery left.", "An idle robot working in a library goes to recharge its battery. It has 14% battery left.", "An idle robot working in a library goes to recharge its battery. It has 15% battery left.", "An idle robot working in a library goes to recharge its battery. It has 16% battery left.", "An idle robot working in a library goes to recharge its battery. It has 17% battery left.", "An idle robot working in a library goes to recharge its battery. It has 18% battery left.", "An idle robot working in a library goes to recharge its battery. It has 19% battery left.", "An idle robot working in a library goes to recharge its battery. It has 2% battery left.", "An idle robot working in a library goes to recharge its battery. It has 20% battery left.", "An idle robot working in a library goes to recharge its battery. It has 21% battery left.", "An idle robot working in a library goes to recharge its battery. It has 22% battery left.", "An idle robot working in a library goes to recharge its battery. It has 23% battery left.", "An idle robot working in a library goes to recharge its battery. It has 24% battery left.", "An idle robot working in a library goes to recharge its battery. It has 25% battery left.", "An idle robot working in a library goes to recharge its battery. It has 26% battery left.", "An idle robot working in a library goes to recharge its battery. It has 27% battery left.", "An idle robot working in a library goes to recharge its battery. It has 28% battery left.", "An idle robot working in a library goes to recharge its battery. It has 29% battery left.", "An idle robot working in a library goes to recharge its battery. It has 3% battery left.", "An idle robot working in a library goes to recharge its battery. It has 30% battery left.", "An idle robot working in a library goes to recharge its battery. It has 31% battery left.", "An idle robot working in a library goes to recharge its battery. It has 32% battery left.", "An idle robot working in a library goes to recharge its battery. It has 33% battery left.", "An idle robot working in a library goes to recharge its battery. It has 34% battery left.", "An idle robot working in a library goes to recharge its battery. It has 35% battery left.", "An idle robot working in a library goes to recharge its battery. It has 36% battery left.", "An idle robot working in a library goes to recharge its battery. It has 37% battery left.", "An idle robot working in a library goes to recharge its battery. It has 38% battery left.", "An idle robot working in a library goes to recharge its battery. It has 39% battery left.", "An idle robot working in a library goes to recharge its battery. It has 4% battery left.", "An idle robot working in a library goes to recharge its battery. It has 40% battery left.", "An idle robot working in a library goes to recharge its battery. It has 41% battery left.", "An idle robot working in a library goes to recharge its battery. It has 42% battery left.", "An idle robot working in a library goes to recharge its battery. It has 43% battery left.", "An idle robot working in a library goes to recharge its battery. It has 44% battery left.", "An idle robot working in a library goes to recharge its battery. It has 45% battery left.", "An idle robot working in a library goes to recharge its battery. It has 46% battery left.", "An idle robot working in a library goes to recharge its battery. It has 47% battery left.", "An idle robot working in a library goes to recharge its battery. It has 48% battery left.", "An idle robot working in a library goes to recharge its battery. It has 49% battery left.", "An idle robot working in a library goes to recharge its battery. It has 5% battery left.", "An idle robot working in a library goes to recharge its battery. It has 50% battery left.", "An idle robot working in a library goes to recharge its battery. It has 51% battery left.", "An idle robot working in a library goes to recharge its battery. It has 52% battery left.", "An idle robot working in a library goes to recharge its battery. It has 53% battery left.", "An idle robot working in a library goes to recharge its battery. It has 54% battery left.", "An idle robot working in a library goes to recharge its battery. It has 55% battery left.", "An idle robot working in a library goes to recharge its battery. It has 56% battery left.", "An idle robot working in a library goes to recharge its battery. It has 57% battery left.", "An idle robot working in a library goes to recharge its battery. It has 58% battery left.", "An idle robot working in a library goes to recharge its battery. It has 59% battery left.", "An idle robot working in a library goes to recharge its battery. It has 6% battery left.", "An idle robot working in a library goes to recharge its battery. It has 60% battery left.", "An idle robot working in a library goes to recharge its battery. It has 61% battery left.", "An idle robot working in a library goes to recharge its battery. It has 62% battery left.", "An idle robot working in a library goes to recharge its battery. It has 63% battery left.", "An idle robot working in a library goes to recharge its battery. It has 64% battery left.", "An idle robot working in a library goes to recharge its battery. It has 65% battery left.", "An idle robot working in a library goes to recharge its battery. It has 66% battery left.", "An idle robot working in a library goes to recharge its battery. It has 67% battery left.", "An idle robot working in a library goes to recharge its battery. It has 68% battery left.", "An idle robot working in a library goes to recharge its battery. It has 69% battery left.", "An idle robot working in a library goes to recharge its battery. It has 7% battery left.", "An idle robot working in a library goes to recharge its battery. It has 70% battery left.", "An idle robot working in a library goes to recharge its battery. It has 71% battery left.", "An idle robot working in a library goes to recharge its battery. It has 72% battery left.", "An idle robot working in a library goes to recharge its battery. It has 73% battery left.", "An idle robot working in a library goes to recharge its battery. It has 74% battery left.", "An idle robot working in a library goes to recharge its battery. It has 75% battery left.", "An idle robot working in a library goes to recharge its battery. It has 76% battery left.", "An idle robot working in a library goes to recharge its battery. It has 77% battery left.", "An idle robot working in a library goes to recharge its battery. It has 78% battery left.", "An idle robot working in a library goes to recharge its battery. It has 79% battery left.", "An idle robot working in a library goes to recharge its battery. It has 8% battery left.", "An idle robot working in a library goes to recharge its battery. It has 80% battery left.", "An idle robot working in a library goes to recharge its battery. It has 81% battery left.", "An idle robot working in a library goes to recharge its battery. It has 82% battery left.", "An idle robot working in a library goes to recharge its battery. It has 83% battery left.", "An idle robot working in a library goes to recharge its battery. It has 84% battery left.", "An idle robot working in a library goes to recharge its battery. It has 85% battery left.", "An idle robot working in a library goes to recharge its battery. It has 86% battery left.", "An idle robot working in a library goes to recharge its battery. It has 87% battery left.", "An idle robot working in a library goes to recharge its battery. It has 88% battery left.", "An idle robot working in a library goes to recharge its battery. It has 89% battery left.", "An idle robot working in a library goes to recharge its battery. It has 9% battery left.", "An idle robot working in a library goes to recharge its battery. It has 90% battery left.", "An idle robot working in a library goes to recharge its battery. It has 91% battery left.", "An idle robot working in a library goes to recharge its battery. It has 92% battery left.", "An idle robot working in a library goes to recharge its battery. It has 93% battery left.", "An idle robot working in a library goes to recharge its battery. It has 94% battery left.", "An idle robot working in a museum explores its environment.", "An idle robot working in a museum goes to recharge its battery. It has 0% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 1% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 10% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 11% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 12% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 13% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 14% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 15% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 16% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 17% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 18% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 19% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 2% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 20% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 21% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 22% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 23% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 24% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 25% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 26% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 27% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 28% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 29% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 3% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 30% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 31% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 32% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 33% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 34% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 35% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 36% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 37% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 38% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 39% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 4% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 40% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 41% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 42% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 43% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 44% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 45% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 46% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 47% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 48% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 49% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 5% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 50% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 51% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 52% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 53% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 54% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 55% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 56% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 57% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 58% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 59% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 6% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 60% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 61% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 62% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 63% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 64% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 65% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 66% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 67% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 68% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 69% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 7% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 70% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 71% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 72% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 73% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 74% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 75% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 76% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 77% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 78% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 79% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 8% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 80% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 81% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 82% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 83% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 84% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 85% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 86% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 87% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 88% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 89% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 9% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 90% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 91% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 92% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 93% battery left.", "An idle robot working in a museum goes to recharge its battery. It has 94% battery left.", "An idle robot working in a restaurant explores its environment.", "An idle robot working in a restaurant goes to recharge its battery. It has 0% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 1% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 10% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 11% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 12% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 13% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 14% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 15% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 16% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 17% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 18% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 19% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 2% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 20% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 21% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 22% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 23% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 24% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 25% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 26% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 27% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 28% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 29% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 3% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 30% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 31% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 32% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 33% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 34% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 35% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 36% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 37% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 38% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 39% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 4% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 40% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 41% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 42% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 43% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 44% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 45% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 46% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 47% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 48% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 49% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 5% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 50% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 51% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 52% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 53% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 54% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 55% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 56% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 57% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 58% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 59% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 6% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 60% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 61% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 62% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 63% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 64% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 65% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 66% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 67% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 68% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 69% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 7% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 70% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 71% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 72% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 73% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 74% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 75% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 76% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 77% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 78% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 79% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 8% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 80% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 81% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 82% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 83% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 84% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 85% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 86% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 87% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 88% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 89% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 9% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 90% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 91% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 92% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 93% battery left.", "An idle robot working in a restaurant goes to recharge its battery. It has 94% battery left.", "An idle robot working in a school explores its environment.", "An idle robot working in a school goes to recharge its battery. It has 0% battery left.", "An idle robot working in a school goes to recharge its battery. It has 1% battery left.", "An idle robot working in a school goes to recharge its battery. It has 10% battery left.", "An idle robot working in a school goes to recharge its battery. It has 11% battery left.", "An idle robot working in a school goes to recharge its battery. It has 12% battery left.", "An idle robot working in a school goes to recharge its battery. It has 13% battery left.", "An idle robot working in a school goes to recharge its battery. It has 14% battery left.", "An idle robot working in a school goes to recharge its battery. It has 15% battery left.", "An idle robot working in a school goes to recharge its battery. It has 16% battery left.", "An idle robot working in a school goes to recharge its battery. It has 17% battery left.", "An idle robot working in a school goes to recharge its battery. It has 18% battery left.", "An idle robot working in a school goes to recharge its battery. It has 19% battery left.", "An idle robot working in a school goes to recharge its battery. It has 2% battery left.", "An idle robot working in a school goes to recharge its battery. It has 20% battery left.", "An idle robot working in a school goes to recharge its battery. It has 21% battery left.", "An idle robot working in a school goes to recharge its battery. It has 22% battery left.", "An idle robot working in a school goes to recharge its battery. It has 23% battery left.", "An idle robot working in a school goes to recharge its battery. It has 24% battery left.", "An idle robot working in a school goes to recharge its battery. It has 25% battery left.", "An idle robot working in a school goes to recharge its battery. It has 26% battery left.", "An idle robot working in a school goes to recharge its battery. It has 27% battery left.", "An idle robot working in a school goes to recharge its battery. It has 28% battery left.", "An idle robot working in a school goes to recharge its battery. It has 29% battery left.", "An idle robot working in a school goes to recharge its battery. It has 3% battery left.", "An idle robot working in a school goes to recharge its battery. It has 30% battery left.", "An idle robot working in a school goes to recharge its battery. It has 31% battery left.", "An idle robot working in a school goes to recharge its battery. It has 32% battery left.", "An idle robot working in a school goes to recharge its battery. It has 33% battery left.", "An idle robot working in a school goes to recharge its battery. It has 34% battery left.", "An idle robot working in a school goes to recharge its battery. It has 35% battery left.", "An idle robot working in a school goes to recharge its battery. It has 36% battery left.", "An idle robot working in a school goes to recharge its battery. It has 37% battery left.", "An idle robot working in a school goes to recharge its battery. It has 38% battery left.", "An idle robot working in a school goes to recharge its battery. It has 39% battery left.", "An idle robot working in a school goes to recharge its battery. It has 4% battery left.", "An idle robot working in a school goes to recharge its battery. It has 40% battery left.", "An idle robot working in a school goes to recharge its battery. It has 41% battery left.", "An idle robot working in a school goes to recharge its battery. It has 42% battery left.", "An idle robot working in a school goes to recharge its battery. It has 43% battery left.", "An idle robot working in a school goes to recharge its battery. It has 44% battery left.", "An idle robot working in a school goes to recharge its battery. It has 45% battery left.", "An idle robot working in a school goes to recharge its battery. It has 46% battery left.", "An idle robot working in a school goes to recharge its battery. It has 47% battery left.", "An idle robot working in a school goes to recharge its battery. It has 48% battery left.", "An idle robot working in a school goes to recharge its battery. It has 49% battery left.", "An idle robot working in a school goes to recharge its battery. It has 5% battery left.", "An idle robot working in a school goes to recharge its battery. It has 50% battery left.", "An idle robot working in a school goes to recharge its battery. It has 51% battery left.", "An idle robot working in a school goes to recharge its battery. It has 52% battery left.", "An idle robot working in a school goes to recharge its battery. It has 53% battery left.", "An idle robot working in a school goes to recharge its battery. It has 54% battery left.", "An idle robot working in a school goes to recharge its battery. It has 55% battery left.", "An idle robot working in a school goes to recharge its battery. It has 56% battery left.", "An idle robot working in a school goes to recharge its battery. It has 57% battery left.", "An idle robot working in a school goes to recharge its battery. It has 58% battery left.", "An idle robot working in a school goes to recharge its battery. It has 59% battery left.", "An idle robot working in a school goes to recharge its battery. It has 6% battery left.", "An idle robot working in a school goes to recharge its battery. It has 60% battery left.", "An idle robot working in a school goes to recharge its battery. It has 61% battery left.", "An idle robot working in a school goes to recharge its battery. It has 62% battery left.", "An idle robot working in a school goes to recharge its battery. It has 63% battery left.", "An idle robot working in a school goes to recharge its battery. It has 64% battery left.", "An idle robot working in a school goes to recharge its battery. It has 65% battery left.", "An idle robot working in a school goes to recharge its battery. It has 66% battery left.", "An idle robot working in a school goes to recharge its battery. It has 67% battery left.", "An idle robot working in a school goes to recharge its battery. It has 68% battery left.", "An idle robot working in a school goes to recharge its battery. It has 69% battery left.", "An idle robot working in a school goes to recharge its battery. It has 7% battery left.", "An idle robot working in a school goes to recharge its battery. It has 70% battery left.", "An idle robot working in a school goes to recharge its battery. It has 71% battery left.", "An idle robot working in a school goes to recharge its battery. It has 72% battery left.", "An idle robot working in a school goes to recharge its battery. It has 73% battery left.", "An idle robot working in a school goes to recharge its battery. It has 74% battery left.", "An idle robot working in a school goes to recharge its battery. It has 75% battery left.", "An idle robot working in a school goes to recharge its battery. It has 76% battery left.", "An idle robot working in a school goes to recharge its battery. It has 77% battery left.", "An idle robot working in a school goes to recharge its battery. It has 78% battery left.", "An idle robot working in a school goes to recharge its battery. It has 79% battery left.", "An idle robot working in a school goes to recharge its battery. It has 8% battery left.", "An idle robot working in a school goes to recharge its battery. It has 80% battery left.", "An idle robot working in a school goes to recharge its battery. It has 81% battery left.", "An idle robot working in a school goes to recharge its battery. It has 82% battery left.", "An idle robot working in a school goes to recharge its battery. It has 83% battery left.", "An idle robot working in a school goes to recharge its battery. It has 84% battery left.", "An idle robot working in a school goes to recharge its battery. It has 85% battery left.", "An idle robot working in a school goes to recharge its battery. It has 86% battery left.", "An idle robot working in a school goes to recharge its battery. It has 87% battery left.", "An idle robot working in a school goes to recharge its battery. It has 88% battery left.", "An idle robot working in a school goes to recharge its battery. It has 89% battery left.", "An idle robot working in a school goes to recharge its battery. It has 9% battery left.", "An idle robot working in a school goes to recharge its battery. It has 90% battery left.", "An idle robot working in a school goes to recharge its battery. It has 91% battery left.", "An idle robot working in a school goes to recharge its battery. It has 92% battery left.", "An idle robot working in a school goes to recharge its battery. It has 93% battery left.", "An idle robot working in a school goes to recharge its battery. It has 94% battery left.", "An idle robot working in a store explores its environment.", "An idle robot working in a store goes to recharge its battery. It has 0% battery left.", "An idle robot working in a store goes to recharge its battery. It has 1% battery left.", "An idle robot working in a store goes to recharge its battery. It has 10% battery left.", "An idle robot working in a store goes to recharge its battery. It has 11% battery left.", "An idle robot working in a store goes to recharge its battery. It has 12% battery left.", "An idle robot working in a store goes to recharge its battery. It has 13% battery left.", "An idle robot working in a store goes to recharge its battery. It has 14% battery left.", "An idle robot working in a store goes to recharge its battery. It has 15% battery left.", "An idle robot working in a store goes to recharge its battery. It has 16% battery left.", "An idle robot working in a store goes to recharge its battery. It has 17% battery left.", "An idle robot working in a store goes to recharge its battery. It has 18% battery left.", "An idle robot working in a store goes to recharge its battery. It has 19% battery left.", "An idle robot working in a store goes to recharge its battery. It has 2% battery left.", "An idle robot working in a store goes to recharge its battery. It has 20% battery left.", "An idle robot working in a store goes to recharge its battery. It has 21% battery left.", "An idle robot working in a store goes to recharge its battery. It has 22% battery left.", "An idle robot working in a store goes to recharge its battery. It has 23% battery left.", "An idle robot working in a store goes to recharge its battery. It has 24% battery left.", "An idle robot working in a store goes to recharge its battery. It has 25% battery left.", "An idle robot working in a store goes to recharge its battery. It has 26% battery left.", "An idle robot working in a store goes to recharge its battery. It has 27% battery left.", "An idle robot working in a store goes to recharge its battery. It has 28% battery left.", "An idle robot working in a store goes to recharge its battery. It has 29% battery left.", "An idle robot working in a store goes to recharge its battery. It has 3% battery left.", "An idle robot working in a store goes to recharge its battery. It has 30% battery left.", "An idle robot working in a store goes to recharge its battery. It has 31% battery left.", "An idle robot working in a store goes to recharge its battery. It has 32% battery left.", "An idle robot working in a store goes to recharge its battery. It has 33% battery left.", "An idle robot working in a store goes to recharge its battery. It has 34% battery left.", "An idle robot working in a store goes to recharge its battery. It has 35% battery left.", "An idle robot working in a store goes to recharge its battery. It has 36% battery left.", "An idle robot working in a store goes to recharge its battery. It has 37% battery left.", "An idle robot working in a store goes to recharge its battery. It has 38% battery left.", "An idle robot working in a store goes to recharge its battery. It has 39% battery left.", "An idle robot working in a store goes to recharge its battery. It has 4% battery left.", "An idle robot working in a store goes to recharge its battery. It has 40% battery left.", "An idle robot working in a store goes to recharge its battery. It has 41% battery left.", "An idle robot working in a store goes to recharge its battery. It has 42% battery left.", "An idle robot working in a store goes to recharge its battery. It has 43% battery left.", "An idle robot working in a store goes to recharge its battery. It has 44% battery left.", "An idle robot working in a store goes to recharge its battery. It has 45% battery left.", "An idle robot working in a store goes to recharge its battery. It has 46% battery left.", "An idle robot working in a store goes to recharge its battery. It has 47% battery left.", "An idle robot working in a store goes to recharge its battery. It has 48% battery left.", "An idle robot working in a store goes to recharge its battery. It has 49% battery left.", "An idle robot working in a store goes to recharge its battery. It has 5% battery left.", "An idle robot working in a store goes to recharge its battery. It has 50% battery left.", "An idle robot working in a store goes to recharge its battery. It has 51% battery left.", "An idle robot working in a store goes to recharge its battery. It has 52% battery left.", "An idle robot working in a store goes to recharge its battery. It has 53% battery left.", "An idle robot working in a store goes to recharge its battery. It has 54% battery left.", "An idle robot working in a store goes to recharge its battery. It has 55% battery left.", "An idle robot working in a store goes to recharge its battery. It has 56% battery left.", "An idle robot working in a store goes to recharge its battery. It has 57% battery left.", "An idle robot working in a store goes to recharge its battery. It has 58% battery left.", "An idle robot working in a store goes to recharge its battery. It has 59% battery left.", "An idle robot working in a store goes to recharge its battery. It has 6% battery left.", "An idle robot working in a store goes to recharge its battery. It has 60% battery left.", "An idle robot working in a store goes to recharge its battery. It has 61% battery left.", "An idle robot working in a store goes to recharge its battery. It has 62% battery left.", "An idle robot working in a store goes to recharge its battery. It has 63% battery left.", "An idle robot working in a store goes to recharge its battery. It has 64% battery left.", "An idle robot working in a store goes to recharge its battery. It has 65% battery left.", "An idle robot working in a store goes to recharge its battery. It has 66% battery left.", "An idle robot working in a store goes to recharge its battery. It has 67% battery left.", "An idle robot working in a store goes to recharge its battery. It has 68% battery left.", "An idle robot working in a store goes to recharge its battery. It has 69% battery left.", "An idle robot working in a store goes to recharge its battery. It has 7% battery left.", "An idle robot working in a store goes to recharge its battery. It has 70% battery left.", "An idle robot working in a store goes to recharge its battery. It has 71% battery left.", "An idle robot working in a store goes to recharge its battery. It has 72% battery left.", "An idle robot working in a store goes to recharge its battery. It has 73% battery left.", "An idle robot working in a store goes to recharge its battery. It has 74% battery left.", "An idle robot working in a store goes to recharge its battery. It has 75% battery left.", "An idle robot working in a store goes to recharge its battery. It has 76% battery left.", "An idle robot working in a store goes to recharge its battery. It has 77% battery left.", "An idle robot working in a store goes to recharge its battery. It has 78% battery left.", "An idle robot working in a store goes to recharge its battery. It has 79% battery left.", "An idle robot working in a store goes to recharge its battery. It has 8% battery left.", "An idle robot working in a store goes to recharge its battery. It has 80% battery left.", "An idle robot working in a store goes to recharge its battery. It has 81% battery left.", "An idle robot working in a store goes to recharge its battery. It has 82% battery left.", "An idle robot working in a store goes to recharge its battery. It has 83% battery left.", "An idle robot working in a store goes to recharge its battery. It has 84% battery left.", "An idle robot working in a store goes to recharge its battery. It has 85% battery left.", "An idle robot working in a store goes to recharge its battery. It has 86% battery left.", "An idle robot working in a store goes to recharge its battery. It has 87% battery left.", "An idle robot working in a store goes to recharge its battery. It has 88% battery left.", "An idle robot working in a store goes to recharge its battery. It has 89% battery left.", "An idle robot working in a store goes to recharge its battery. It has 9% battery left.", "An idle robot working in a store goes to recharge its battery. It has 90% battery left.", "An idle robot working in a store goes to recharge its battery. It has 91% battery left.", "An idle robot working in a store goes to recharge its battery. It has 92% battery left.", "An idle robot working in a store goes to recharge its battery. It has 93% battery left.", "An idle robot working in a store goes to recharge its battery. It has 94% battery left.", "An idle robot working in a warehouse explores its environment.", "An idle robot working in a warehouse goes to recharge its battery. It has 0% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 1% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 10% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 11% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 12% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 13% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 14% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 15% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 16% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 17% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 18% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 19% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 2% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 20% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 21% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 22% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 23% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 24% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 25% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 26% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 27% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 28% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 29% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 3% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 30% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 31% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 32% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 33% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 34% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 35% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 36% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 37% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 38% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 39% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 4% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 40% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 41% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 42% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 43% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 44% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 45% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 46% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 47% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 48% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 49% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 5% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 50% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 51% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 52% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 53% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 54% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 55% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 56% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 57% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 58% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 59% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 6% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 60% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 61% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 62% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 63% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 64% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 65% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 66% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 67% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 68% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 69% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 7% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 70% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 71% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 72% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 73% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 74% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 75% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 76% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 77% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 78% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 79% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 8% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 80% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 81% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 82% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 83% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 84% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 85% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 86% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 87% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 88% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 89% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 9% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 90% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 91% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 92% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 93% battery left.", "An idle robot working in a warehouse goes to recharge its battery. It has 94% battery left.", "An office assistant robot keeps track of who is in the office today.", "The robot is trying to locate the glasses of a patient in a hospital."];
+</script>
+<script>
+(function () {
+"use strict";
+
+// ============================================================
+// Validated physics core (see physics.js unit tests)
+// ============================================================
+function normalize(vx, vy) {
+  const len = Math.hypot(vx, vy);
+  if (len < 1e-9) return [0, 0];
+  return [vx / len, vy / len];
+}
+
+function closestPointOnRect(px, py, cx, cy, theta, w, l) {
+  const dx = px - cx, dy = py - cy;
+  const c = Math.cos(-theta), s = Math.sin(-theta);
+  const lx = dx * c - dy * s;
+  const ly = dx * s + dy * c;
+  const hw = w / 2, hl = l / 2;
+  const cxl = Math.max(-hw, Math.min(hw, lx));
+  const cyl = Math.max(-hl, Math.min(hl, ly));
+  const c2 = Math.cos(theta), s2 = Math.sin(theta);
+  return [cxl * c2 - cyl * s2 + cx, cxl * s2 + cyl * c2 + cy];
+}
+
+function closestPointOnSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  let t = 0;
+  if (lenSq > 1e-9) {
+    t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+  }
+  return [x1 + t * dx, y1 + t * dy];
+}
+
+function closestPointOnObstacle(px, py, obs) {
+  if (obs.kind === "segment") {
+    return closestPointOnSegment(px, py, obs.x1, obs.y1, obs.x2, obs.y2);
+  }
+  return closestPointOnRect(px, py, obs.x, obs.y, obs.theta, obs.w, obs.l);
+}
+
+function socialForceRepulsion(dx, dy, dist, rSum, A, B, minDist, biasAngle) {
+  const d = Math.max(dist, minDist);
+  const mag = A * Math.exp((rSum - d) / B);
+  let [nx, ny] = normalize(dx, dy);
+  if (biasAngle) {
+    const c = Math.cos(biasAngle), s = Math.sin(biasAngle);
+    const rnx = nx * c - ny * s, rny = nx * s + ny * c;
+    nx = rnx; ny = rny;
+  }
+  return [nx * mag, ny * mag];
+}
+
+function stepAgents(agents, obstacles, params, dt) {
+  const { A, B, Aobs, Bobs, maxAccel, maxSpeedFactor, minDist } = params;
+  const accels = agents.map(() => [0, 0]);
+
+  for (let i = 0; i < agents.length; i++) {
+    const a = agents[i];
+    let fx = 0, fy = 0;
+
+    if (a.path && a.path.length > 0) {
+      let target = a.path[Math.min(a.pathIndex, a.path.length - 1)];
+      const dist = Math.hypot(target.x - a.x, target.y - a.y);
+      const wr = a.waypointRadius || 0.3;
+      if (dist < wr && a.pathIndex < a.path.length - 1) {
+        a.pathIndex++;
+        target = a.path[a.pathIndex];
+      } else if (dist < wr && a.pathIndex >= a.path.length - 1 && a.loop) {
+        a.pathIndex = 0;
+        target = a.path[0];
+      }
+      const isFinalStop = !a.loop && a.pathIndex === a.path.length - 1 &&
+        Math.hypot(target.x - a.x, target.y - a.y) < wr;
+      if (!isFinalStop) {
+        const [ex, ey] = normalize(target.x - a.x, target.y - a.y);
+        fx += (ex * a.v0 - a.vx) / a.tau;
+        fy += (ey * a.v0 - a.vy) / a.tau;
+      } else {
+        fx += (0 - a.vx) / a.tau;
+        fy += (0 - a.vy) / a.tau;
+      }
+    } else {
+      fx += (0 - a.vx) / a.tau;
+      fy += (0 - a.vy) / a.tau;
+    }
+
+    for (let j = 0; j < agents.length; j++) {
+      if (i === j) continue;
+      const b = agents[j];
+      const dx = a.x - b.x, dy = a.y - b.y;
+      const dist = Math.hypot(dx, dy);
+      let [rx, ry] = socialForceRepulsion(dx, dy, dist, a.radius + b.radius, A, B, minDist, params.biasAngle);
+      if (a.type === "human" && b.type === "human" && dist > (params.humanHumanRange || Infinity)) {
+        rx = 0; ry = 0;
+      }
+      if (a.type === "robot" && b.type === "human" && typeof a.humanRepulsion === "number") {
+        rx *= a.humanRepulsion; ry *= a.humanRepulsion;
+      }
+      if (a.type === "human" && b.type === "robot" && typeof b.robotRepulsion === "number") {
+        rx *= b.robotRepulsion; ry *= b.robotRepulsion;
+      }
+      fx += rx; fy += ry;
+    }
+
+    for (const obs of obstacles) {
+      const [ox, oy] = closestPointOnObstacle(a.x, a.y, obs);
+      const dx = a.x - ox, dy = a.y - oy;
+      const dist = Math.hypot(dx, dy);
+      const [rx, ry] = socialForceRepulsion(dx, dy, dist, a.radius, Aobs, Bobs, minDist, params.biasAngle);
+      fx += rx; fy += ry;
+    }
+
+    fx += (Math.random() - 0.5) * 2 * (params.fluctuation || 0);
+    fy += (Math.random() - 0.5) * 2 * (params.fluctuation || 0);
+
+    const mag = Math.hypot(fx, fy);
+    if (mag > maxAccel) { fx = (fx / mag) * maxAccel; fy = (fy / mag) * maxAccel; }
+    accels[i] = [fx, fy];
+  }
+
+  for (let i = 0; i < agents.length; i++) {
+    const a = agents[i];
+    a.vx += accels[i][0] * dt;
+    a.vy += accels[i][1] * dt;
+    const speed = Math.hypot(a.vx, a.vy);
+    const vmax = a.v0 * maxSpeedFactor;
+    if (speed > vmax) { a.vx = (a.vx / speed) * vmax; a.vy = (a.vy / speed) * vmax; }
+    a.x += a.vx * dt;
+    a.y += a.vy * dt;
+    if (speed > 0.05) a.theta = Math.atan2(a.vy, a.vx);
+  }
+}
+
+const SFM_PARAMS = {
+  A: 2.1, B: 0.3, Aobs: 6, Bobs: 0.25,
+  maxAccel: 8, maxSpeedFactor: 0.6, minDist: 0.05,
+  fluctuation: 0.2, biasAngle: 0.22, humanHumanRange: 0.6,
+};
+
+// Fixed, static 8x8m room boundary, centred at (0,0). Not user-editable --
+// a permanent feature of the environment, unlike tables.
+const ROOM_HALF = 4;
+const ROOM_WALLS = [
+  { kind: "segment", x1: -ROOM_HALF, y1: -ROOM_HALF, x2: ROOM_HALF, y2: -ROOM_HALF },
+  { kind: "segment", x1: ROOM_HALF, y1: -ROOM_HALF, x2: ROOM_HALF, y2: ROOM_HALF },
+  { kind: "segment", x1: ROOM_HALF, y1: ROOM_HALF, x2: -ROOM_HALF, y2: ROOM_HALF },
+  { kind: "segment", x1: -ROOM_HALF, y1: ROOM_HALF, x2: -ROOM_HALF, y2: -ROOM_HALF },
+];
+
+// ============================================================
+// Scene state
+// ============================================================
+let nextId = 1;
+const scene = { entities: [] };
+
+let mode = "select";
+let selectedId = null;
+let dragging = null;
+let playing = false;
+let simTime = 0;
+let speedFactor = 1.0;
+
+const VIEW_METERS = 10; // the visible area always covers exactly this many metres
+let PPM = 45; // recomputed in resizeCanvas() to fit VIEW_METERS
+let panX = 0, panY = 0;
+
+// ============================================================
+// Canvas setup
+// ============================================================
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const scrollEl = document.getElementById("canvas-scroll");
+
+function resizeCanvas() {
+  const rect = scrollEl.getBoundingClientRect();
+  canvas.width = rect.width * devicePixelRatio;
+  canvas.height = rect.height * devicePixelRatio;
+  canvas.style.width = rect.width + "px";
+  canvas.style.height = rect.height + "px";
+  panX = canvas.width / 2;
+  panY = canvas.height / 2;
+  // fit VIEW_METERS x VIEW_METERS within the smaller dimension, so the
+  // full 10x10m area is always visible regardless of window/panel size
+  PPM = Math.min(rect.width, rect.height) / VIEW_METERS;
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+function worldToScreen(x, y) {
+  return [panX + x * PPM * devicePixelRatio, panY - y * PPM * devicePixelRatio];
+}
+function screenToWorld(px, py) {
+  return [(px - panX) / (PPM * devicePixelRatio), -(py - panY) / (PPM * devicePixelRatio)];
+}
+
+// ============================================================
+// Entity helpers
+// ============================================================
+function makeEntity(type, x, y) {
+  const id = nextId++;
+  if (type === "robot") {
+    return { id, type, x, y, theta: 0, vx: 0, vy: 0, radius: 0.3, v0: 0.8, tau: 0.5,
+             path: [], pathIndex: 0, loop: false, waypointRadius: 0.3, humanRepulsion: 2.0,
+             robotRepulsion: 0.5, initial: { x, y, theta: 0 } };
+  } else if (type === "human") {
+    return { id, type, x, y, theta: 0, vx: 0, vy: 0, radius: 0.25, v0: 0.6, tau: 0.5,
+             path: [], pathIndex: 0, loop: false, waypointRadius: 0.3,
+             initial: { x, y, theta: 0 } };
+  } else {
+    return { id, type, x, y, theta: 0, w: 1.2, l: 0.7,
+             initial: { x, y, theta: 0 } };
+  }
+}
+
+function pointInRotatedRect(px, py, rect) {
+  const dx = px - rect.x, dy = py - rect.y;
+  const c = Math.cos(-rect.theta), s = Math.sin(-rect.theta);
+  const lx = dx * c - dy * s, ly = dx * s + dy * c;
+  return Math.abs(lx) <= rect.w / 2 && Math.abs(ly) <= rect.l / 2;
+}
+
+function findEntityAt(wx, wy) {
+  for (let i = scene.entities.length - 1; i >= 0; i--) {
+    const e = scene.entities[i];
+    if (e.type === "table") {
+      if (pointInRotatedRect(wx, wy, e)) return e;
+    } else {
+      const d = Math.hypot(wx - e.x, wy - e.y);
+      if (d <= e.radius + 0.05) return e;
+    }
+  }
+  return null;
+}
+
+function getEntity(id) { return scene.entities.find(e => e.id === id); }
+
+function deleteEntity(id) {
+  scene.entities = scene.entities.filter(e => e.id !== id);
+  if (selectedId === id) selectedId = null;
+  renderInspector();
+}
+
+function clearAll() {
+  scene.entities = [];
+  selectedId = null;
+  simTime = 0;
+  playing = false;
+  document.getElementById("btn-play").innerHTML = "&#9654; Play";
+  renderInspector();
+}
+
+// ============================================================
+// Rendering
+// ============================================================
+function draw() {
+  ctx.save();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawGrid();
+  drawWalls();
+  drawPaths();
+  drawAgents();
+  drawTables();
+  ctx.restore();
+}
+
+function getCss(varName) {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+
+function drawGrid() {
+  const w = canvas.width, h = canvas.height;
+  const step = PPM * devicePixelRatio;
+  ctx.lineWidth = 1;
+  const startXi = Math.floor((0 - panX) / step);
+  const endXi = Math.ceil((w - panX) / step);
+  const startYi = Math.floor((0 - panY) / step);
+  const endYi = Math.ceil((h - panY) / step);
+
+  for (let i = startXi; i <= endXi; i++) {
+    const x = panX + i * step;
+    ctx.strokeStyle = (i % 5 === 0) ? getCss("--grid-line-major") : getCss("--grid-line");
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+  for (let j = startYi; j <= endYi; j++) {
+    const y = panY + j * step;
+    ctx.strokeStyle = (j % 5 === 0) ? getCss("--grid-line-major") : getCss("--grid-line");
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+  ctx.strokeStyle = getCss("--axis-line"); ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(0, panY); ctx.lineTo(w, panY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(panX, 0); ctx.lineTo(panX, h); ctx.stroke();
+
+  ctx.fillStyle = getCss("--text-dim");
+  ctx.font = (11 * devicePixelRatio) + "px monospace";
+  for (let i = startXi; i <= endXi; i++) {
+    if (i % 5 !== 0 || i === 0) continue;
+    const x = panX + i * step;
+    ctx.fillText(i.toString() + "m", x + 3, panY - 4);
+  }
+}
+
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+function drawWalls() {
+  ctx.strokeStyle = getCss("--accent-wall");
+  ctx.lineWidth = 5 * devicePixelRatio;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ROOM_WALLS.forEach((w, idx) => {
+    const [sx1, sy1] = worldToScreen(w.x1, w.y1);
+    const [sx2, sy2] = worldToScreen(w.x2, w.y2);
+    ctx.moveTo(sx1, sy1);
+    ctx.lineTo(sx2, sy2);
+  });
+  ctx.stroke();
+}
+
+function drawTables() {
+  for (const e of scene.entities) {
+    if (e.type !== "table") continue;
+    const [sx, sy] = worldToScreen(e.x, e.y);
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(-e.theta);
+    const wpx = e.w * PPM * devicePixelRatio, lpx = e.l * PPM * devicePixelRatio;
+    ctx.fillStyle = getCss("--table-fill");
+    ctx.strokeStyle = e.id === selectedId ? getCss("--select-ring") : getCss("--table-stroke");
+    ctx.lineWidth = e.id === selectedId ? 2.5 : 1.5;
+    roundRect(ctx, -wpx / 2, -lpx / 2, wpx, lpx, 4 * devicePixelRatio);
+    ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = getCss("--table-stroke"); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(wpx / 2 - 4, 0); ctx.stroke();
+    ctx.restore();
+    if (e.id === selectedId) drawRotationHandle(e);
+  }
+}
+
+function drawPaths() {
+  for (const e of scene.entities) {
+    if (e.type === "table" || !e.path || e.path.length === 0) continue;
+    const color = e.type === "robot" ? getCss("--accent-robot") : getCss("--accent-human");
+    ctx.strokeStyle = color; ctx.globalAlpha = 0.55;
+    ctx.setLineDash([6 * devicePixelRatio, 5 * devicePixelRatio]);
+    ctx.lineWidth = 1.5 * devicePixelRatio;
+    ctx.beginPath();
+    let [px, py] = worldToScreen(e.initial.x, e.initial.y);
+    ctx.moveTo(px, py);
+    for (const wp of e.path) {
+      const [sx, sy] = worldToScreen(wp.x, wp.y);
+      ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+    e.path.forEach((wp, idx) => {
+      const [sx, sy] = worldToScreen(wp.x, wp.y);
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(sx, sy, 4 * devicePixelRatio, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = getCss("--entity-outline");
+      ctx.font = (9 * devicePixelRatio) + "px monospace";
+      ctx.fillText((idx + 1).toString(), sx - 2.5 * devicePixelRatio, sy + 3 * devicePixelRatio);
+    });
+  }
+}
+
+function drawAgents() {
+  for (const e of scene.entities) {
+    if (e.type === "table") continue;
+    const [sx, sy] = worldToScreen(e.x, e.y);
+    const r = e.radius * PPM * devicePixelRatio;
+    const color = e.type === "robot" ? getCss("--accent-robot") : getCss("--accent-human");
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.85;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = e.id === selectedId ? getCss("--select-ring") : getCss("--entity-outline");
+    ctx.lineWidth = e.id === selectedId ? 2.5 : 1.5;
+    ctx.stroke();
+    ctx.rotate(-e.theta);
+    ctx.strokeStyle = getCss("--entity-outline"); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(r + 5, 0); ctx.stroke();
+    ctx.restore();
+    if (e.id === selectedId) drawRotationHandle(e);
+  }
+}
+
+function handlePosition(e) {
+  const dist = (e.type === "table" ? Math.max(e.w, e.l) / 2 : e.radius) + 0.35;
+  return [e.x + Math.cos(e.theta) * dist, e.y + Math.sin(e.theta) * dist];
+}
+
+function drawRotationHandle(e) {
+  const [hx, hy] = handlePosition(e);
+  const [sx, sy] = worldToScreen(hx, hy);
+  ctx.beginPath();
+  ctx.arc(sx, sy, 5 * devicePixelRatio, 0, Math.PI * 2);
+  ctx.fillStyle = getCss("--handle-fill");
+  ctx.fill();
+  ctx.strokeStyle = getCss("--handle-stroke"); ctx.lineWidth = 1.5; ctx.stroke();
+}
+
+// ============================================================
+// Interaction
+// ============================================================
+const modeHints = {
+  "select": "Click an item to select it. Drag its body to move it, or drag the small white handle to rotate it.",
+  "add-robot": "Click on the canvas to place the robot. Only one robot is allowed; placing a new one replaces it.",
+  "add-human": "Click on the canvas to place a human. Keep clicking to place more.",
+  "add-table": "Click on the canvas to place a table. Keep clicking to place more.",
+  "add-path": "Select a human or the robot first, then click on the canvas to add waypoints to its path.",
+};
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll(".tool-btn[data-mode]").forEach(b => {
+    b.classList.toggle("active", b.dataset.mode === m);
+  });
+  document.getElementById("mode-hint").textContent = modeHints[m] || "";
+}
+
+document.querySelectorAll(".tool-btn[data-mode]").forEach(btn => {
+  btn.addEventListener("click", () => setMode(btn.dataset.mode));
+});
+setMode("select");
+
+// ============================================================
+// Context selector (values come from context.json's keys; used later
+// when trajectories are exported to the reward model)
+// ============================================================
+const DEFAULT_CONTEXT = "A delivery robot is navigating in a museum.";
+let selectedContext = null;
+(function populateContextSelect() {
+  const sel = document.getElementById("context-select");
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a context\u2026";
+  sel.appendChild(placeholder);
+  for (const key of CONTEXT_KEYS) {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = key;
+    sel.appendChild(opt);
+  }
+  sel.addEventListener("change", (ev) => {
+    selectedContext = ev.target.value || null;
+  });
+  if (CONTEXT_KEYS.includes(DEFAULT_CONTEXT)) {
+    sel.value = DEFAULT_CONTEXT;
+    selectedContext = DEFAULT_CONTEXT;
+  }
+})();
+
+document.getElementById("btn-clear-all").addEventListener("click", () => {
+  showConfirm("Remove every item from the scene? This can't be undone.", clearAll);
+});
+
+function showConfirm(message, onConfirm, opts) {
+  opts = opts || {};
+  const overlay = document.getElementById("modal-overlay");
+  document.getElementById("modal-message").textContent = message;
+  overlay.classList.add("open");
+
+  const confirmBtn = document.getElementById("modal-confirm");
+  const cancelBtn = document.getElementById("modal-cancel");
+  confirmBtn.textContent = opts.confirmText || "Clear everything";
+  confirmBtn.className = opts.danger === false ? "" : "confirm";
+  cancelBtn.style.display = opts.showCancel === false ? "none" : "";
+
+  function cleanup() {
+    overlay.classList.remove("open");
+    confirmBtn.removeEventListener("click", onYes);
+    cancelBtn.removeEventListener("click", onNo);
+    overlay.removeEventListener("click", onOverlayClick);
+  }
+  function onYes() { cleanup(); if (onConfirm) onConfirm(); }
+  function onNo() { cleanup(); }
+  function onOverlayClick(ev) { if (ev.target === overlay) { cleanup(); } }
+
+  confirmBtn.addEventListener("click", onYes);
+  cancelBtn.addEventListener("click", onNo);
+  overlay.addEventListener("click", onOverlayClick);
+}
+
+function showInfo(message) {
+  showConfirm(message, null, { confirmText: "OK", showCancel: false, danger: false });
+}
+
+document.getElementById("dark-mode-toggle").addEventListener("change", (ev) => {
+  document.documentElement.classList.toggle("dark", ev.target.checked);
+});
+
+canvas.addEventListener("mousedown", (ev) => {
+  const rect = canvas.getBoundingClientRect();
+  const px = (ev.clientX - rect.left) * devicePixelRatio;
+  const py = (ev.clientY - rect.top) * devicePixelRatio;
+  const [wx, wy] = screenToWorld(px, py);
+
+  if (mode === "add-robot") {
+    scene.entities = scene.entities.filter(e => e.type !== "robot");
+    const e = makeEntity("robot", wx, wy);
+    scene.entities.push(e);
+    selectedId = e.id;
+    renderInspector();
+    return;
+  }
+  if (mode === "add-human") {
+    const e = makeEntity("human", wx, wy);
+    scene.entities.push(e);
+    selectedId = e.id;
+    renderInspector();
+    return;
+  }
+  if (mode === "add-table") {
+    const e = makeEntity("table", wx, wy);
+    scene.entities.push(e);
+    selectedId = e.id;
+    renderInspector();
+    return;
+  }
+  if (mode === "add-path") {
+    if (selectedId == null) return;
+    const e = getEntity(selectedId);
+    if (!e || e.type === "table") return;
+    e.path.push({ x: Math.round(wx * 100) / 100, y: Math.round(wy * 100) / 100 });
+    return;
+  }
+  if (mode === "select") {
+    if (selectedId != null) {
+      const e = getEntity(selectedId);
+      if (e) {
+        const [hx, hy] = handlePosition(e);
+        if (Math.hypot(wx - hx, wy - hy) < 0.18) {
+          dragging = { kind: "rotate", id: e.id };
+          return;
+        }
+      }
+    }
+    const hit = findEntityAt(wx, wy);
+    if (hit) {
+      selectedId = hit.id;
+      dragging = { kind: "move", id: hit.id, offX: wx - hit.x, offY: wy - hit.y };
+      renderInspector();
+    } else {
+      selectedId = null;
+      renderInspector();
+    }
+  }
+});
+
+window.addEventListener("mousemove", (ev) => {
+  if (!dragging) return;
+  const rect = canvas.getBoundingClientRect();
+  const px = (ev.clientX - rect.left) * devicePixelRatio;
+  const py = (ev.clientY - rect.top) * devicePixelRatio;
+  const [wx, wy] = screenToWorld(px, py);
+  const e = getEntity(dragging.id);
+  if (!e) return;
+  if (dragging.kind === "move") {
+    e.x = wx - dragging.offX;
+    e.y = wy - dragging.offY;
+    e.initial.x = e.x; e.initial.y = e.y;
+    if (selectedId === e.id) renderInspector();
+  } else if (dragging.kind === "rotate") {
+    e.theta = Math.atan2(wy - e.y, wx - e.x);
+    e.initial.theta = e.theta;
+    if (selectedId === e.id) renderInspector();
+  }
+});
+window.addEventListener("mouseup", () => { dragging = null; });
+
+window.addEventListener("keydown", (ev) => {
+  if ((ev.key === "Delete" || ev.key === "Backspace") && selectedId != null) {
+    const active = document.activeElement;
+    if (active && active.tagName === "INPUT") return;
+    deleteEntity(selectedId);
+  }
+});
+
+// ============================================================
+// Inspector panel
+// ============================================================
+function fieldRow(fields) { return '<div class="field-row">' + fields.join("") + '</div>'; }
+function numberField(id, label, value, step) {
+  return '<div class="field"><label>' + label + '</label><input type="number" id="' + id + '" value="' + value + '" step="' + step + '"></div>';
+}
+function bindNum(id, cb) {
+  document.getElementById(id).addEventListener("input", (ev) => {
+    const v = parseFloat(ev.target.value);
+    if (!isNaN(v)) cb(v);
+  });
+}
+
+function renderInspector() {
+  const body = document.getElementById("inspector-body");
+  if (selectedId == null) {
+    body.innerHTML = '<p class="empty">Nothing selected. Switch to Select / Move and click an item on the canvas.</p>';
+    return;
+  }
+  const e = getEntity(selectedId);
+  if (!e) { body.innerHTML = ""; return; }
+
+  const colorMap = { robot: "var(--accent-robot)", human: "var(--accent-human)", table: "var(--accent-table)" };
+  const bg = colorMap[e.type];
+  let html = '<span class="badge" style="background:' + bg + '22; color:' + bg + '; border:1px solid ' + bg + '55;">' + e.type + '</span>';
+
+  html += fieldRow([
+    numberField("pos-x", "X (m)", e.x.toFixed(2), 0.1),
+    numberField("pos-y", "Y (m)", e.y.toFixed(2), 0.1),
+  ]);
+  html += numberField("theta", "Orientation (deg)", (e.theta * 180 / Math.PI).toFixed(1), 1);
+
+  if (e.type === "table") {
+    html += fieldRow([
+      numberField("table-w", "Width (m)", e.w, 0.1),
+      numberField("table-l", "Length (m)", e.l, 0.1),
+    ]);
+  } else {
+    html += numberField("v0", "Desired speed (m/s)", e.v0, 0.1);
+    if (e.type === "robot") {
+      html += '<div class="field range-field"><label>Robot\'s avoidance of humans: <span class="range-val" id="human-rep-val">' +
+        e.humanRepulsion.toFixed(1) + 'x</span></label>' +
+        '<input type="range" id="human-rep" min="0" max="4" step="0.1" value="' + e.humanRepulsion + '"></div>';
+      html += '<div class="field range-field"><label>Humans\' avoidance of robot: <span class="range-val" id="robot-rep-val">' +
+        e.robotRepulsion.toFixed(1) + 'x</span></label>' +
+        '<input type="range" id="robot-rep" min="0" max="4" step="0.1" value="' + e.robotRepulsion + '"></div>';
+    }
+    html += '<div class="checkbox-row"><input type="checkbox" id="loop-path" ' + (e.loop ? "checked" : "") + '> Loop path</div>';
+    html += '<div class="field"><label>Path waypoints: ' + e.path.length + '</label>' +
+      '<button class="action" id="clear-path">Clear path</button></div>';
+  }
+
+  html += '<button class="action danger" id="delete-entity">Delete item</button>';
+  body.innerHTML = html;
+
+  bindNum("pos-x", v => { e.x = v; e.initial.x = v; });
+  bindNum("pos-y", v => { e.y = v; e.initial.y = v; });
+  bindNum("theta", v => { e.theta = v * Math.PI / 180; e.initial.theta = e.theta; });
+  if (e.type === "table") {
+    bindNum("table-w", v => { e.w = Math.max(0.1, v); });
+    bindNum("table-l", v => { e.l = Math.max(0.1, v); });
+  } else {
+    bindNum("v0", v => { e.v0 = Math.max(0.05, v); });
+    if (e.type === "robot") {
+      document.getElementById("human-rep").addEventListener("input", (ev) => {
+        const v = parseFloat(ev.target.value);
+        e.humanRepulsion = v;
+        document.getElementById("human-rep-val").textContent = v.toFixed(1) + "x";
+      });
+      document.getElementById("robot-rep").addEventListener("input", (ev) => {
+        const v = parseFloat(ev.target.value);
+        e.robotRepulsion = v;
+        document.getElementById("robot-rep-val").textContent = v.toFixed(1) + "x";
+      });
+    }
+    document.getElementById("loop-path").addEventListener("change", (ev) => { e.loop = ev.target.checked; });
+    document.getElementById("clear-path").addEventListener("click", () => {
+      e.path = []; e.pathIndex = 0; renderInspector();
+    });
+  }
+  document.getElementById("delete-entity").addEventListener("click", () => deleteEntity(e.id));
+}
+
+// ============================================================
+// Simulation loop
+// ============================================================
+document.getElementById("btn-export").addEventListener("click", () => {
+  const robot = scene.entities.find(e => e.type === "robot");
+  if (!robot) {
+    showInfo("There's no robot in the scene yet. Place one before exporting.");
+    return;
+  }
+  if (recordedSequence.length === 0) {
+    showInfo("Nothing has been recorded yet. Press Play and let the simulation run first, then export.");
+    return;
+  }
+  const proceed = () => doExport();
+  if (!getRobotGoalWaypoint()) {
+    showConfirm(
+      "The robot has no path set, so it has no real destination -- the exported goal will just be its starting position. Export anyway?",
+      proceed, { confirmText: "Export anyway" }
+    );
+  } else if (!selectedContext) {
+    showConfirm(
+      "No context is selected in the dropdown -- the exported file's context_description will be empty. Export anyway?",
+      proceed, { confirmText: "Export anyway" }
+    );
+  } else {
+    proceed();
+  }
+});
+
+function buildTrajectoryObject() {
+  const wallsOut = ROOM_WALLS.map(w => [w.x1, w.y1, w.x2, w.y2]);
+  return {
+    grid: {},
+    walls: wallsOut,
+    sequence: recordedSequence,
+    area_semantics: "indoor",
+    context_description: selectedContext || "",
+    // 'label' (ground-truth reward) intentionally omitted: this is an
+    // inference-only export, and the model's own loader does
+    // json_data.get('label', 0.) -- that default only kicks in when the
+    // key is missing entirely, not when it's present as null/None.
+  };
+}
+
+function doExport() {
+  const trajectory = buildTrajectoryObject();
+  const blob = new Blob([JSON.stringify(trajectory)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "trajectory.json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById("btn-play").addEventListener("click", () => {
+  playing = !playing;
+  document.getElementById("btn-play").innerHTML = playing ? "&#10074;&#10074; Pause" : "&#9654; Play";
+  if (playing) document.getElementById("stop-reason").textContent = "";
+});
+document.getElementById("btn-reset").addEventListener("click", () => {
+  playing = false;
+  document.getElementById("btn-play").innerHTML = "&#9654; Play";
+  simTime = 0;
+  simAccumulator = 0;
+  for (const e of scene.entities) {
+    if (e.type === "table") continue;
+    e.x = e.initial.x; e.y = e.initial.y; e.theta = e.initial.theta;
+    e.vx = 0; e.vy = 0; e.pathIndex = 0;
+    delete e._prevTheta;
+  }
+  recordedSequence = [];
+  document.getElementById("time-readout").textContent = "0.0";
+  document.getElementById("stop-reason").textContent = "";
+  renderInspector();
+});
+document.getElementById("speed").addEventListener("input", (ev) => {
+  speedFactor = parseFloat(ev.target.value);
+  document.getElementById("speed-val").textContent = speedFactor.toFixed(2) + "x";
+});
+
+const FIXED_DT = 1 / 10;   // matches the reward model's frame spacing (frame_threshold)
+const MAX_SIM_TIME = 20;   // seconds
+const GOAL_STOP_DIST = 0.2; // metres
+
+let simAccumulator = 0;
+let lastFrameTime = performance.now();
+let recordedSequence = [];
+
+function getRobotGoalWaypoint() {
+  const robot = scene.entities.find(e => e.type === "robot");
+  if (!robot || !robot.path || robot.path.length === 0) return null;
+  return robot.path[robot.path.length - 1];
+}
+
+function robotReachedGoal() {
+  const robot = scene.entities.find(e => e.type === "robot");
+  const goal = getRobotGoalWaypoint();
+  if (!robot || !goal) return false;
+  return Math.hypot(robot.x - goal.x, robot.y - goal.y) <= GOAL_STOP_DIST;
+}
+
+// Builds the per-frame "goal" object matching the reward model's expected
+// schema. The goal is always the robot's FINAL waypoint (its ultimate
+// destination), held constant across every recorded frame -- intermediate
+// waypoints only shape the robot's SFM steering, they aren't the "goal".
+function computeGoalObject() {
+  const robot = scene.entities.find(e => e.type === "robot");
+  const finalWp = getRobotGoalWaypoint();
+
+  let x, y, angle;
+  if (robot && finalWp) {
+    x = finalWp.x; y = finalWp.y;
+    const path = robot.path;
+    if (path.length >= 2) {
+      const prev = path[path.length - 2];
+      angle = Math.atan2(finalWp.y - prev.y, finalWp.x - prev.x);
+    } else {
+      angle = Math.atan2(finalWp.y - robot.initial.y, finalWp.x - robot.initial.x);
+    }
+  } else if (robot) {
+    // no path set -- degenerate goal: the robot's own starting pose
+    x = robot.initial.x; y = robot.initial.y; angle = robot.initial.theta;
+  } else {
+    x = 0; y = 0; angle = 0;
+  }
+
+  return {
+    type: "go-to", human: [],
+    x, y, angle,
+    pos_th: 0.1, angle_th: 0.1,
+    pos_threshold: 0, angle_threshold: 0,
+  };
+}
+
+function buildFrame(goalObj) {
+  const robot = scene.entities.find(e => e.type === "robot");
+  const humans = scene.entities.filter(e => e.type === "human");
+  const tables = scene.entities.filter(e => e.type === "table");
+
+  let robotOut = null;
+  if (robot) {
+    const cosT = Math.cos(robot.theta), sinT = Math.sin(robot.theta);
+    // world-frame (vx, vy) rotated into the robot's own body frame
+    // (forward = local +x), as opposed to the global reference frame
+    const localVx = robot.vx * cosT + robot.vy * sinT;
+    const localVy = -robot.vx * sinT + robot.vy * cosT;
+
+    let speedA = 0;
+    if (typeof robot._prevTheta === "number") {
+      const dtheta = Math.atan2(Math.sin(robot.theta - robot._prevTheta), Math.cos(robot.theta - robot._prevTheta));
+      speedA = dtheta / FIXED_DT;
+    }
+    robot._prevTheta = robot.theta;
+
+    robotOut = {
+      shape: { type: "circle", width: robot.radius * 2, length: robot.radius * 2 },
+      x: robot.x, y: robot.y, angle: robot.theta,
+      speed_x: localVx, speed_y: localVy, speed_a: speedA,
+    };
+  }
+
+  return {
+    timestamp: Math.round(simTime * 1000) / 1000,
+    robot: robotOut,
+    goal: goalObj,
+    objects: tables.map(t => ({
+      id: t.id, type: "table", x: t.x, y: t.y, angle: t.theta,
+      shape: { type: "rectangle", width: t.w, length: t.l },
+    })),
+    people: humans.map(h => ({ id: h.id, x: h.x, y: h.y, angle: h.theta })),
+  };
+}
+
+function stopSimulation(reason) {
+  playing = false;
+  document.getElementById("btn-play").innerHTML = "&#9654; Play";
+  document.getElementById("stop-reason").textContent = reason;
+  evaluateCurrentRun();
+}
+
+// ============================================================
+// Reward model integration (runs in-browser via Pyodide/PyScript;
+// see the <py-config>/<script type="py"> blocks below)
+// ============================================================
+let modelReady = false;
+let pendingEvaluation = null;
+
+function updateModelStatus(text, state) {
+  const el = document.getElementById("model-status");
+  el.textContent = text;
+  el.className = "model-status " + state;
+}
+
+function updateResultBanner(html, state) {
+  const el = document.getElementById("result-banner");
+  el.innerHTML = html;
+  el.className = "result-banner show " + state;
+}
+
+// Exposed for the Python side to call once the model has finished loading
+// (or failed to). Defined on window explicitly so it's reachable from the
+// separate <script type="py"> block regardless of this IIFE's closure.
+window.onModelReady = function () {
+  modelReady = true;
+  updateModelStatus("Reward model ready", "ready");
+  if (pendingEvaluation) {
+    const traj = pendingEvaluation;
+    pendingEvaluation = null;
+    runEvaluation(traj);
+  }
+};
+window.onModelError = function (message) {
+  modelReady = false;
+  updateModelStatus("Reward model failed to load", "error");
+  console.error("Reward model failed to load:\n" + message);
+};
+
+function evaluateCurrentRun() {
+  const robot = scene.entities.find(e => e.type === "robot");
+  if (!robot || recordedSequence.length === 0) return; // nothing meaningful to evaluate
+
+  if (!selectedContext) {
+    updateResultBanner(
+      "No context selected in the dropdown, so this run wasn't evaluated. Pick a context and run again.",
+      "error"
+    );
+    return;
+  }
+
+  const trajectory = buildTrajectoryObject();
+  if (!modelReady) {
+    pendingEvaluation = trajectory;
+    updateResultBanner("Reward model is still loading &mdash; will evaluate this run as soon as it's ready&hellip;", "info");
+    return;
+  }
+  runEvaluation(trajectory);
+}
+
+function runEvaluation(trajectory) {
+  updateResultBanner("Evaluating with the reward model&hellip;", "info");
+  let result;
+  try {
+    result = window.pyComputeReward(JSON.stringify(trajectory));
+  } catch (e) {
+    updateResultBanner("Evaluation failed: " + escapeHtml(e.message || String(e)), "error");
+    return;
+  }
+  if (typeof result === "string" && result.startsWith("ERROR:")) {
+    updateResultBanner("Model error: <pre style=\"white-space:pre-wrap;margin:4px 0 0;font-size:11px;\">" +
+      escapeHtml(result.slice(6)) + "</pre>", "error");
+  } else {
+    const score = Number(result);
+    updateResultBanner(
+      "Reward: <span class=\"reward-value\">" + score.toFixed(3) + "</span>" +
+      " <span class=\"reward-context\">(" + escapeHtml(trajectory.context_description) + ")</span>",
+      "success"
+    );
+  }
+}
+
+function escapeHtml(s) {
+  const div = document.createElement("div");
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+function tick(now) {
+  const realDt = Math.min(0.05, (now - lastFrameTime) / 1000);
+  lastFrameTime = now;
+
+  if (playing) {
+    const obstacles = scene.entities.filter(e => e.type === "table").concat(ROOM_WALLS);
+    const agents = scene.entities.filter(e => e.type !== "table");
+    simAccumulator += realDt * speedFactor;
+
+    while (simAccumulator >= FIXED_DT && playing) {
+      if (agents.length > 0) stepAgents(agents, obstacles, SFM_PARAMS, FIXED_DT);
+      simTime += FIXED_DT;
+      simAccumulator -= FIXED_DT;
+      recordedSequence.push(buildFrame(computeGoalObject()));
+
+      if (simTime >= MAX_SIM_TIME) {
+        stopSimulation("Stopped: 20s time limit reached");
+      } else if (robotReachedGoal()) {
+        stopSimulation("Stopped: robot reached its goal");
+      }
+    }
+    document.getElementById("time-readout").textContent = simTime.toFixed(1);
+    renderInspectorLive();
+  }
+
+  draw();
+  requestAnimationFrame(tick);
+}
+
+function renderInspectorLive() {
+  if (selectedId == null) return;
+  const e = getEntity(selectedId);
+  if (!e) return;
+  const xEl = document.getElementById("pos-x"), yEl = document.getElementById("pos-y"), tEl = document.getElementById("theta");
+  if (xEl && document.activeElement !== xEl) xEl.value = e.x.toFixed(2);
+  if (yEl && document.activeElement !== yEl) yEl.value = e.y.toFixed(2);
+  if (tEl && document.activeElement !== tEl) tEl.value = (e.theta * 180 / Math.PI).toFixed(1);
+}
+
+function loadDefaultScenario() {
+  const robot = makeEntity("robot", -3, -3);
+  robot.path = [{ x: 0, y: 0 }, { x: 3, y: 3 }];
+  scene.entities.push(robot);
+
+  const human1 = makeEntity("human", 3, -3);
+  human1.path = [{ x: -3, y: 3 }];
+  scene.entities.push(human1);
+
+  const human2 = makeEntity("human", -3, 2.5);
+  human2.path = [{ x: 3, y: -2 }];
+  scene.entities.push(human2);
+
+  const table = makeEntity("table", 1.4, -1.2);
+  table.theta = 0.4;
+  scene.entities.push(table);
+}
+loadDefaultScenario();
+
+requestAnimationFrame(tick);
+draw();
+
+})();
+</script>
+  <!--
+    Reward model integration. This page must be served over http(s)
+    (e.g. `python -m http.server`) with these files sitting alongside
+    index.html: metrics_np.py, data_conversions_np.py,
+    data_normalization_np.py, graph_build_np.py, np_gat.py, np_gru.py,
+    np_model.py, reward_browser.py, weights.json, context.json.
+    Opening this file directly (file://) will NOT work -- the browser
+    blocks the fetches PyScript needs to load those files.
+  -->
+  <py-config>
+    packages = ["numpy", "shapely"]
+
+    [splashscreen]
+    enabled = false
+
+    [files]
+    "./metrics_np.py" = "./metrics_np.py"
+    "./data_conversions_np.py" = "./data_conversions_np.py"
+    "./data_normalization_np.py" = "./data_normalization_np.py"
+    "./graph_build_np.py" = "./graph_build_np.py"
+    "./np_gat.py" = "./np_gat.py"
+    "./np_gru.py" = "./np_gru.py"
+    "./np_model.py" = "./np_model.py"
+    "./reward_browser.py" = "./reward_browser.py"
+    "./weights.json" = "./weights.json"
+    "./context.json" = "./context.json"
+  </py-config>
+
+  <script type="py">
+    import json
+    import traceback
+    from pyodide.ffi import create_proxy
+    from js import window
+
+    try:
+        from reward_browser import Reward
+
+        reward_model = Reward("weights.json", "context.json")
+
+        def compute_reward_from_json(trajectory_json_str):
+            try:
+                traj = json.loads(trajectory_json_str)
+                ctx = traj.get("context_description") or ""
+                score = reward_model.compute_reward(traj, ctx)
+                return float(score)
+            except Exception:
+                return "ERROR:" + traceback.format_exc()
+
+        window.pyComputeReward = create_proxy(compute_reward_from_json)
+        window.onModelReady()
+    except Exception:
+        window.onModelError(traceback.format_exc())
+  </script>
+</body>
+</html>
