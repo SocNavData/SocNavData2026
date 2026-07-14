@@ -8,6 +8,8 @@ This repository contains the core code and utilities for working with the propos
 
 All data required to run the code is available at the following link: [SocNavData2026_all_data](https://www.dropbox.com/scl/fo/5mdx98kxux31tpz17t737/ABZuqYOXVMrcGJmUGeBQBo0?rlkey=70f89t67bg4zoa6g6lw5dcflg&st=2o6n9lbn&dl=0)
 
+🚀 Do you want to **test the metric live**? Check it out at [https://socnavdata.github.io/SocNavData2026/](https://socnavdata.github.io/SocNavData2026/)! It will take you to a simple web-based simulator where the robot uses a social force model to move. You can define new scenarios and test what the metric would output (it will take **a few seconds to load**!). 
+
 ## Dataset
 
 The dataset comprises variables related to raters, trajectories, and rater-trajectory scores. For every rater, together with demographic information, a rating list is stored. The rating list contains tuples (_t_, _c_, _r_), where _t_ is a trajectory identiﬁer (string), _c_ is a context (string), and _r_ is a score assigned by the rater to the trajectory _t_ given the context _c_.
