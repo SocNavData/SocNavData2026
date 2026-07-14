@@ -27,71 +27,111 @@ def distance_point_to_segment(x1, y1, x2, y2, x, y):
 
 
 class Slider(object):
-    def __init__(self, canvas, structure):
+    def __init__(self, canvas, structure, metric_name, expected_metrics):
         super().__init__()
         self.value = None
         self.canvas = canvas
+        self.metric_name = metric_name
+        self.expected_metrics = expected_metrics
         self.radius = 14
+        self.track_margin = 55
         self.shown_message = False
         self.ctx = self.canvas.getContext('2d')
         self.structure = structure
+        try:
+            self.dpr = float(js.window.devicePixelRatio)
+        except Exception:
+            self.dpr = 1.0
+        if self.dpr <= 0:
+            self.dpr = 1.0
         self.off()
 
     def draw(self, event=None):
         canvas = self.canvas
-        radius = self.radius
-        x_start = int(2*radius)
-        x_end = int(canvas.width - 2*radius)
+        radius = 13 # Slightly larger, more tactile thumb
+        margin = self.track_margin
+        dpr = self.dpr
+        canvas_w = canvas.width / dpr
+        canvas_h = canvas.height / dpr
+        x_start = margin
+        x_end = canvas_w - margin
+
         ctx = self.ctx
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+        ctx.clearRect(0, 0, canvas_w, canvas_h)
 
         video_watched = int(js.eval("video_watched"))
         if video_watched != 1:
             return
 
-        ctx.strokeStyle = "black"
+        slider_offset = 13
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-        slider_offset = 15
-
-        ctx.lineWidth = 2
+        # ---------------------------------------------------
+        # 1. This is to change the shape of the track where the thumb slider is
+        # ---------------------------------------------------
+        ctx.lineCap = "round"
+        ctx.lineWidth = 9  # Thicker track
+        ctx.strokeStyle = "#e2e8f0" # Modern light slate-gray
+        
         ctx.beginPath()
-        ctx.moveTo(x_start, canvas.height/2+slider_offset)
-        ctx.lineTo(x_end, canvas.height/2+slider_offset)
-        ctx.moveTo(x_start, canvas.height/2-10+slider_offset)
-        ctx.lineTo(x_start, canvas.height/2+10+slider_offset)
-        ctx.moveTo((x_start+x_end)//2, canvas.height/2-7+slider_offset)
-        ctx.lineTo((x_start+x_end)//2, canvas.height/2+7+slider_offset)
-        ctx.moveTo(x_end, canvas.height/2-10+slider_offset)
-        ctx.lineTo(x_end, canvas.height/2+10+slider_offset)
+        ctx.moveTo(x_start, canvas_h/2+slider_offset)
+        ctx.lineTo(x_end, canvas_h/2+slider_offset)
         ctx.stroke()
 
+        # Optional: Draw a center marker (subtle dot instead of a harsh line)
+        ctx.beginPath()
+        ctx.arc((x_start+x_end)//2, canvas_h/2+slider_offset, 4, 0, 6.28)
+        ctx.fillStyle = "#cbd5e1"
+        ctx.fill()
+
+        # ---------------------------------------------------
+        # 2. Circle slider on top of the track
+        # ---------------------------------------------------
         if self.value is not None:
             ctx.beginPath()
             x = x_start + self.value*(x_end-x_start)
-            y = canvas.height//2+slider_offset
+            y = canvas_h//2+slider_offset
             ctx.arc(int(x), int(y), int(radius), 0, 6.28)
-            r = str(hex(int((1-self.value)*255))).split('x')[-1].zfill(2)
-            g = str(hex(int((  self.value)*255))).split('x')[-1].zfill(2)
-            b = "00"
-            ctx.lineWidth = 1
+            
+            # Dynamic Red-to-Green Color
+            r = str(hex(int((1-self.value)*240))).split('x')[-1].zfill(2)
+            g = str(hex(int((  self.value)*240))).split('x')[-1].zfill(2)
+            b = "10" # Adding a tiny bit of blue softens the neon colors
+            
+            # Add a nice drop shadow so it "pops" off the screen
+            ctx.shadowColor = "rgba(0, 0, 0, 0.25)"
+            ctx.shadowBlur = 6
+            ctx.shadowOffsetY = 2
+            
             ctx.fillStyle = "#"+r+g+b+"FF"
             ctx.fill()
+            
+            # Turn off shadow for the stroke
+            ctx.shadowColor = "transparent"
+            
+            # Add a clean white border around the thumb
+            ctx.lineWidth = 2
+            ctx.strokeStyle = "#ffffff"
             ctx.stroke()
 
-        ctx.strokeStyle = "black"
-        ctx.fillStyle = "#000000"
-        ctx.font = "20px serif"
-        ctx.textAlign = "left"
+        # ---------------------------------------------------
+        # 3. Font selection
+        # ---------------------------------------------------
+        # Using a modern font stack
+        ctx.font = "13px 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        ctx.fillStyle = "#64748b" # Muted slate text so it isn't aggressively black
         ctx.textBaseline = "top"
-        ctx.fillText("extremely", 3,                0)
-        ctx.fillText("bad", 3,                26)
         ctx.textAlign = "center"
-        ctx.fillText("fair",  canvas.width//2,  0)
-        ctx.textAlign = "right"
-        ctx.fillText("extremely",  canvas.width-3,     0)
-        ctx.fillText("good",       canvas.width-3,    26)
+
+        label_y = 5
+        # Left label
+        ctx.fillText("Extremely bad", x_start, label_y)
+        
+        # Center label
+        ctx.fillText("Fair", (x_start+x_end)//2, label_y)
+        
+        # Right label
+        ctx.fillText("Extremely good", x_end, label_y)
 
 
     def update_pose(self, x, y):
@@ -101,8 +141,10 @@ class Slider(object):
         #     return
 
         radius = self.radius
-        x_start = int(2*radius)
-        x_end = int(self.canvas.width - 2*radius)
+        dpr = self.dpr
+        canvas_w = self.canvas.width / dpr
+        x_start = int(self.track_margin)
+        x_end = int(canvas_w - self.track_margin)
 
         x1 = x_start
         y1 = radius
@@ -114,11 +156,19 @@ class Slider(object):
     def set_value(self, v):
         question_index = int(js.eval("questionIndex"))
         self.value = v
-        self.structure["answers"][question_index] = self.value
+
+        if question_index not in self.structure["answers"] or not isinstance(self.structure["answers"][question_index], dict):
+            self.structure["answers"][question_index] = {}
+        self.structure["answers"][question_index][self.metric_name] = self.value
+        ans = self.structure["answers"][question_index]
+        if all(metric in ans for metric in self.expected_metrics):
+            js.eval("answer_set = 1;")
+        else:
+            js.eval("answer_set = 0;")
         if question_index == MIN_ANSWERS - 1 and self.shown_message == False:
             js.alert(f"Thank you for submitting your {MIN_ANSWERS} ratings. Feel free to rate more trajectories. When you are done, please click on \"send\".")
             self.shown_message = True
-        js.eval("answer_set = 1;")
+        #js.eval("answer_set = 1;")
 
     def on(self):
         self.active = True

@@ -21,7 +21,7 @@
 #
 
 import time, sys, os
-from turtle import width
+#from turtle import width
 import numpy as np
 import cv2
 import json
@@ -29,8 +29,34 @@ import copy
 
 import argparse
 
-HUMAN_RADIUS = 0.55 / 2.
+HUMAN_RADIUS = 0.50 / 2.
 HUMAN_DEPTH =  0.20 / 2.
+
+
+def create_video_writer(video_base_path, fps, frame_size, codec_preference="auto"):
+    if codec_preference == "h264":
+        codec_candidates = [("avc1", ".mp4"), ("H264", ".mp4"), ("X264", ".mp4")]
+    elif codec_preference == "webm":
+        codec_candidates = [("VP80", ".webm"), ("VP90", ".webm")]
+    elif codec_preference == "mp4v":
+        codec_candidates = [("mp4v", ".mp4"), ("MP4V", ".mp4")]
+    else:
+        # Auto: try browser-friendly formats first.
+        codec_candidates = [
+            ("avc1", ".mp4"), ("H264", ".mp4"), ("X264", ".mp4"),
+            ("VP80", ".webm"), ("VP90", ".webm"),
+            ("mp4v", ".mp4"), ("MP4V", ".mp4")
+        ]
+
+    for codec, extension in codec_candidates:
+        video_path = video_base_path + extension
+        fourcc = cv2.VideoWriter_fourcc(*codec)
+        writer = cv2.VideoWriter(video_path, fourcc, fps, frame_size)
+        if writer.isOpened():
+            return writer, codec, video_path
+        writer.release()
+
+    return None, None, None
 
 def world_to_grid(pW, GRID_CELL_SIZEX, GRID_CELL_SIZEY, GRID_X_ORIG, GRID_Y_ORIG, GRID_ANGLE_ORIG, GRID_HEIGHT):
     pGx, pGy = world_to_grid_float(pW, GRID_CELL_SIZEX, GRID_CELL_SIZEY, GRID_X_ORIG, GRID_Y_ORIG, GRID_ANGLE_ORIG, GRID_HEIGHT)
@@ -292,16 +318,25 @@ def draw_scenario(data, imageW, imageH, FR = None):
 
     # print('orig', GRID_X_ORIG, GRID_Y_ORIG, GRID_ANGLE_ORIG)
     if draw_grid:
-        grid = data["grid"]["data"]
-        grid = np.array(grid, np.int8)
+        grid = np.array(data["grid"]["data"], np.int8)
+
+        if grid.ndim == 1 and grid.size == GRID_HEIGHT * GRID_WIDTH:
+            grid = grid.reshape((GRID_HEIGHT, GRID_WIDTH))
+        elif grid.ndim != 2:
+            raise ValueError("Grid data should be a 2D array.")
+
+        if grid.shape != (GRID_HEIGHT, GRID_WIDTH):
+            print("Warning: grid metadata shape ({}, {}) does not match data shape {}; using data shape.".format(
+                GRID_HEIGHT, GRID_WIDTH, grid.shape
+            ))
+            GRID_HEIGHT, GRID_WIDTH = grid.shape
     else:
         grid = np.zeros((GRID_HEIGHT, GRID_WIDTH), np.int8)
 
     v2gray = {-1:[128, 128, 128], 0: [255, 255, 255], 1: [0, 0, 0]}
-    global_grid = np.zeros((GRID_HEIGHT, GRID_WIDTH, 3), np.uint8)
-    for y in range(grid.shape[0]):
-        for x in range(grid.shape[1]):
-            global_grid[y][x] = v2gray[grid[y][x]]
+    global_grid = np.full((GRID_HEIGHT, GRID_WIDTH, 3), v2gray[-1], np.uint8)
+    global_grid[grid == 0] = v2gray[0]
+    global_grid[grid == 1] = v2gray[1]
 
     scaleX = imageW/GRID_WIDTH
     scaleY = imageH/GRID_HEIGHT
@@ -359,16 +394,44 @@ if __name__ == "__main__":
     parser.add_argument('--videoheight', type=int, help='video height', required=True)
     parser.add_argument('--dir', type=str, nargs="?", default="./videos", help="output directory for the generated videos")
     parser.add_argument('--novideo', type=bool, nargs="?", default=False, help='avoid generating a video file')
+    parser.add_argument('--videocodec', type=str, choices=["auto", "h264", "webm", "mp4v"], default="auto",
+                        help='video codec preference: auto tries H.264, then WebM, then MP4V fallback')
     parser.add_argument('--ffwd', type=bool, nargs="?", default=False, help='play as fast as possible')
+    parser.add_argument('--nodisplay', action='store_true', help='disable live visualization window (useful on headless systems)')
+    parser.add_argument('--exportframes', action='store_true', help='export rendered frames as PNG images')
+    parser.add_argument('--framesdir', type=str, nargs="?", default="./frames", help='output directory for exported frames')
+    parser.add_argument('--framestep', type=int, nargs="?", default=1, help='export one frame every N sequence frames')
+    parser.add_argument('--maxframes', type=int, nargs="?", default=0, help='max exported frames per file, 0 means no limit')
 
 
     args = parser.parse_args()
+
+    enable_display = not args.nodisplay
+    if enable_display and os.name != "nt":
+        # Disable GUI windowing automatically when no display server is available.
+        has_display = bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+        if not has_display:
+            print("No display server detected; disabling live visualization window.")
+            enable_display = False
+
+    if args.framestep < 1:
+        print("Invalid --framestep value; using 1.")
+        args.framestep = 1
+
+    if args.maxframes < 0:
+        print("Invalid --maxframes value; using 0 (no limit).")
+        args.maxframes = 0
 
     output_dir = args.dir
     if args.novideo is False:
         print("Videos will be saved in", output_dir)
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
+
+    if args.exportframes:
+        print("Frames will be saved in", args.framesdir)
+        if not os.path.isdir(args.framesdir):
+            os.makedirs(args.framesdir, exist_ok=True)
 
 
     for file_name in args.files:
@@ -409,7 +472,14 @@ if __name__ == "__main__":
         images_for_video = []
         last_timestamp = -1
         human_colors = {}
-        for s in data["sequence"]:
+        episode_name = os.path.splitext(os.path.basename(file_name))[0]
+        frame_output_dir = os.path.join(args.framesdir, episode_name)
+        if args.exportframes and not os.path.isdir(frame_output_dir):
+            os.makedirs(frame_output_dir, exist_ok=True)
+        exported_frames = 0
+        failed_exports = 0
+
+        for frame_idx, s in enumerate(data["sequence"]):
             local_grid = copy.deepcopy(global_grid)
 
             local_grid, human_colors = draw_frame(s, local_grid, human_colors, GRID_CELL_SIZEX, GRID_CELL_SIZEY, GRID_X_ORIG, GRID_Y_ORIG, GRID_ANGLE_ORIG, GRID_HEIGHT)
@@ -424,10 +494,26 @@ if __name__ == "__main__":
 
             if args.novideo is False:
                 images_for_video.append(to_show)
-            cv2.imshow("grid", to_show)
-            k = cv2.waitKey(1)
-            if k==27:
-                exit()
+
+            if args.exportframes:
+                within_limit = args.maxframes == 0 or exported_frames < args.maxframes
+                if frame_idx % args.framestep == 0 and within_limit:
+                    output_frame = os.path.join(frame_output_dir, f"frame_{frame_idx:06d}.png")
+                    if cv2.imwrite(output_frame, to_show):
+                        exported_frames += 1
+                    else:
+                        failed_exports += 1
+
+            if enable_display:
+                try:
+                    cv2.imshow("grid", to_show)
+                    k = cv2.waitKey(1)
+                    if k==27:
+                        exit()
+                except cv2.error as exc:
+                    print("OpenCV GUI backend is unavailable; disabling live visualization window.")
+                    print(exc)
+                    enable_display = False
 
             sleeptime = s["timestamp"]-last_timestamp
             if last_timestamp == -1:
@@ -437,12 +523,39 @@ if __name__ == "__main__":
                 time.sleep(sleeptime)
 
         if args.novideo is False:
+            if len(images_for_video) == 0:
+                print("No frames available to encode video for", file_name)
+                continue
+
             ini_episode = data["sequence"][0]["timestamp"]
             end_episode = data["sequence"][-1]["timestamp"]
-            fps = len(images_for_video)/(end_episode-ini_episode)
-            fourcc =  cv2.VideoWriter_fourcc(*'MP4V')
-            output_file = file_name.split("/")[-1].split(".")[0] + ".mp4"
-            writer = cv2.VideoWriter(os.path.join(output_dir, output_file), fourcc, fps, (images_for_video[0].shape[1], images_for_video[0].shape[0])) 
-            for image in images_for_video:
-                writer.write(image)
-            writer.release()
+            duration = end_episode-ini_episode
+            if duration <= 0:
+                print("Invalid episode duration detected; using 30 FPS fallback.")
+                fps = 30.0
+            else:
+                fps = len(images_for_video)/duration
+
+            output_base = os.path.join(output_dir, file_name.split("/")[-1].split(".")[0])
+            frame_size = (images_for_video[0].shape[1], images_for_video[0].shape[0])
+            writer, used_codec, video_path = create_video_writer(output_base, fps, frame_size, args.videocodec)
+
+            if writer is not None:
+                for image in images_for_video:
+                    writer.write(image)
+                writer.release()
+                print("Saved video:", video_path, "(codec:", used_codec + ")")
+                if video_path.endswith(".webm"):
+                    print("Generated WebM output for broader browser compatibility.")
+                if used_codec.lower() == "mp4v":
+                    print("Warning: MP4V may not be browser-compatible. Try --videocodec h264 if available.")
+            else:
+                print("Could not create video file (codec/backend unavailable):", video_path)
+
+        if args.exportframes:
+            print("Exported", exported_frames, "frames to", frame_output_dir)
+            if failed_exports > 0:
+                print("Failed to save", failed_exports, "frames in", frame_output_dir)
+
+    if enable_display:
+        cv2.destroyAllWindows()
