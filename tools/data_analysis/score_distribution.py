@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-def get_scores(datadir, use_raters):
+def get_scores(datadir, use_raters, dataset_file):
 
     file_paths = []
     for root, _, files in os.walk(datadir):
@@ -31,7 +31,18 @@ def get_scores(datadir, use_raters):
                         score = int(answers[a]*100)
                         scores.append(score)
     else:
+        if dataset_file is not None:
+            with open(dataset_file) as set_file:
+                ds_files = set_file.read().splitlines()
+                traj_names = [f.split('/')[-1] for f in ds_files]
+            include_all = False
+        else:
+            include_all = True
+
         for f in tqdm(file_paths):
+            if not include_all:
+                if f.split('/')[-1] not in traj_names:
+                    continue
             with open(f, 'r') as traj_file:
                 trajectory_data = json.load(traj_file)
                 if 'label' in trajectory_data.keys():
@@ -50,12 +61,14 @@ if __name__ == "__main__":
     parser.add_argument('--datadir', type=str, nargs='?', required=True, help='Directory containing the labeled dataset')
     parser.add_argument('--nbins', type=int, default = 10, help='Number of bins of the histogram')
     parser.add_argument('--use_raters', action='store_true', help='Use raters\' files')
+    parser.add_argument('--dataset_file', type=str, default='none', help = 'Dataset file')
     args = parser.parse_args()
 
     datadir = args.datadir
     nbins = args.nbins
     use_raters = args.use_raters
-    scores = get_scores(datadir, use_raters)
+    dataset_file = None if args.dataset_file=='none' else args.dataset_file
+    scores = get_scores(datadir, use_raters, dataset_file)
     plt.hist(scores, bins=np.arange(0, 101, 100//nbins), color='skyblue', edgecolor='black')
 
     plt.title('Score distribution')
