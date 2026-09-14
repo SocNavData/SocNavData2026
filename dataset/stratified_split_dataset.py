@@ -107,15 +107,15 @@ def data_splitter(data_dir, train_ratio, val_ratio, ngroups, baseline_test):
             test_files += final_variants[s]['files']
 
 
-    # # Write splits to text files
-    # with open("train_set.txt", "w") as train_file:
-    #     train_file.writelines(f"{path}\n" for path in train_files)
+    # Write splits to text files
+    with open("train_set.txt", "w") as train_file:
+        train_file.writelines(f"{path}\n" for path in train_files)
 
-    # with open("val_set.txt", "w") as val_file:
-    #     val_file.writelines(f"{path}\n" for path in val_files)
+    with open("val_set.txt", "w") as val_file:
+        val_file.writelines(f"{path}\n" for path in val_files)
 
-    # with open("test_set.txt", "w") as test_file:
-    #     test_file.writelines(f"{path}\n" for path in test_files)
+    with open("test_set.txt", "w") as test_file:
+        test_file.writelines(f"{path}\n" for path in test_files)
 
     print(f"Data split complete: {len(train_files)} train, {len(val_files)} validation, and {len(test_files)} test.")
 
