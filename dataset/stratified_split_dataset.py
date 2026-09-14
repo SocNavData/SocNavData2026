@@ -5,7 +5,7 @@ import argparse
 import numpy as np
 from tqdm import tqdm
 
-def data_splitter(data_dir, train_ratio, val_ratio, test_ratio):
+def data_splitter(data_dir, train_ratio, val_ratio, ngroups):
 
     trajectory_variant = dict()
     variants_path = os.path.join(data_dir, 'trajectory_variants.json')
@@ -36,7 +36,8 @@ def data_splitter(data_dir, train_ratio, val_ratio, test_ratio):
 
         final_variants[v]['ratings'].append(trajectory_data['label'])
 
-    stratified_variants = {0.2: [], 0.4:[], 0.6:[], 0.8:[], 1.0:[]}
+    label_groups = np.linspace(0., 1., ngroups)
+    stratified_variants =  {k: [] for k in label_groups}# {0.2: [], 0.4:[], 0.6:[], 0.8:[], 1.0:[]}
     ratings = list(stratified_variants.keys())
     for v in final_variants:
         mean_rating = np.mean(np.array(final_variants[v]['ratings']))
@@ -98,4 +99,5 @@ if __name__ == "__main__":
         exit()
     test_ratio = 1. - (train_ratio+val_ratio)
     dataset_dir = args.dataset
-    data_splitter(dataset_dir, train_ratio, val_ratio, test_ratio)
+    ngroups = 10
+    data_splitter(dataset_dir, train_ratio, val_ratio, ngroups)
